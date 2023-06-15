@@ -1,0 +1,32 @@
+tile.test.name=Test block
+tile.base_block.name=Base block
+gui.servermod.activate_button=Activate
+commands.teams.usage=/teams <add> <player> <color> or /teams <kick> <player>
+messages.team.is_null=You are not a member of any team
+messages.events.change_dimension=You feel weak when you are not in the nether
+messages.player.base_deactivate=Your base activation time at {x=%s, y=%s, z=%s} has expired
+messages.player.base_captured=The %s team has captured your base at {x=%s, y=%s, z=%s}
+messages.player.base_destroyed=The %s team loses one of their bases
+messages.player.remaining_live=Remaining lives - %s
+messages.player.full_death=You are completely dead
+messages.player.dead_activate=You are too dead to do it
+messages.events.team_complete=The %s team completed %s achievements
+messages.events.base_pos=Their base position is in the area of %s blocks from the point {x=%s, z=%s}
+messages.events.null_base=But this teams did not activate any bases
+messages.color.white=white
+messages.color.orange=orange
+messages.color.magenta=magenta
+messages.color.light_blue=light blue
+messages.color.yellow=yellow
+messages.color.lime=lime
+messages.color.pink=pink
+messages.color.grey=grey
+messages.color.light_grey=light grey
+messages.color.cyan=cyan
+messages.color.purple=purple
+messages.color.blue=blue
+messages.color.brown=brown
+messages.color.green=green
+messages.color.red=red
+messages.color.black=black
+
