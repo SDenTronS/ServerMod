@@ -18,16 +18,16 @@ public class ModTimer {
         return ticks;
     }
 
-    private String two_sign_format(Integer num){
-        String text = String.valueOf(num);
-        int text_len = text.length();
-
-        if (text_len % 2 == 0){
-            return text;
-        }
-        else
-            return "0" + text;
-    }
+//    private String two_sign_format(Integer num){
+//        String text = String.valueOf(num);
+//        int text_len = text.length();
+//
+//        if (text_len % 2 == 0){
+//            return text;
+//        }
+//        else
+//            return "0" + text;
+//    }
 
     @Override
     public String toString() {
@@ -35,7 +35,7 @@ public class ModTimer {
         Integer minutes = (ticks / 60) % 60;
         Integer hours = ticks / (60 * 60);
 
-        return String.format("%s:%s:%s", hours, two_sign_format(minutes), two_sign_format(seconds));
+        return String.format("%d:%02d:%02d", hours, minutes, seconds);
     }
 
     public void setTicks(Integer ticks){

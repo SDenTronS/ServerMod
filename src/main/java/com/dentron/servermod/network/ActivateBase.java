@@ -112,11 +112,11 @@ public class ActivateBase implements IMessage {
     public static void notifyTeam(byte teamID){
         List<UUID> team = CapUtils.getTeamPlayers(teamID);
         for (UUID uuid : team){
-            EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
-
-            if (player == null){
+            if (!Utils.isPlayerOnline(uuid)){
                 return;
             }
+
+            EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
 
             ServerMod.network.sendTo(new UpdateNoneBaseGUI(false), player);
         }
@@ -125,11 +125,11 @@ public class ActivateBase implements IMessage {
     public static void notifyCapture(byte teamID, byte capturer, BlockPos pos){
         List<UUID> team = CapUtils.getTeamPlayers(teamID);
         for (UUID uuid : team){
-            EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
-
-            if (player == null){
+            if (!Utils.isPlayerOnline(uuid)){
                 return;
             }
+
+            EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
 
             String local_key = ModConstants.COLORS_LOCALIZE_KEYS.get(capturer);
             ITextComponent team_part = new TextComponentTranslation(local_key).setStyle(ModConstants.COLORS_TEXT_STYLE.get(capturer).setBold(true));

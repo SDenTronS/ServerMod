@@ -1,28 +1,32 @@
 package com.dentron.servermod.commands.commandTeam;
 
-import com.dentron.servermod.teams.ModPlayerStatsHandler;
-import com.dentron.servermod.teams.PlayerStatsProvider;
+import com.dentron.servermod.SMEventHandler;
+import com.dentron.servermod.ServerMod;
+import com.dentron.servermod.network.SendInvitationWithOD;
+import com.dentron.servermod.utils.CapUtils;
+import com.dentron.servermod.utils.Messages;
+import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.TeamsWorldData;
 import com.dentron.servermod.utils.ModConstants;
-import net.minecraft.command.CommandBase;
-import net.minecraft.command.CommandException;
-import net.minecraft.command.ICommandSender;
-import net.minecraft.command.WrongUsageException;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
+import net.minecraft.command.*;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ScoreboardSaveData;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.Style;
-import net.minecraft.util.text.TextComponentString;
-import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.*;
 import net.minecraftforge.server.permission.DefaultPermissionLevel;
 
 import javax.annotation.Nullable;
-import java.util.Collections;
+import java.util.*;
 import java.util.List;
 
 public class CommandTeam extends CommandBase {
+    private final List<String> onlinePlayerArgs = Lists.newArrayList("invite", "makeLeader", "kick");
+    private final List<String> colorArgs = Lists.newArrayList("create", "stats");
+    private final List<String> anyPlayerArgs = Lists.newArrayList("accept", "decline");
+
     @Override
     public String getName() {
         return "teams";
@@ -35,44 +39,355 @@ public class CommandTeam extends CommandBase {
 
     @Override
     public void execute(MinecraftServer server, ICommandSender sender, String[] args) throws CommandException {
-        if ((args.length <= 1) || (args.length == 2 && args[0].equals("add"))) {
+
+        if (args.length < 1){
             throw new WrongUsageException("commands.teams.usage");
         }
 
-        EntityPlayerMP player = getPlayer(server, sender, args[1]);
-        ModPlayerStatsHandler cap = player.getCapability(PlayerStatsProvider.PLAYER_STATS_CAP, null);
-        byte player_team_id = cap.getTeamID();
+        EntityPlayerMP commandSender = getCommandSenderAsPlayer(sender);
+        byte senderTeamId = CapUtils.getTeamID(commandSender);
+        boolean isSenderTeamLeader = Utils.isTeamLeader(commandSender);
+        boolean commandSenderInTeam = senderTeamId != 0;
+        boolean teamIsExist = TeamsWorldData.getTeams(CapUtils.DATA_WORLD).hasKey(String.valueOf(senderTeamId));
+        boolean teamHasActiveBase = CapUtils.hasActiveBase(senderTeamId);
 
-        if (!args[0].equals("add")) {
-            TeamsWorldData.removePlayer(player_team_id, player.getUniqueID(), server.getWorld(player.dimension));
-            cap.setTeamID((byte) 0);
-            return;
+        if (args.length == 1){
+            switch (args[0]){
+                case "create":
+                    throw new WrongUsageException("commands.teams.create.color");
+                case "invite":
+                    throw new WrongUsageException("commands.teams.invite.player");
+                case "kick":
+                    throw new WrongUsageException("commands.teams.kick.player");
+                case "makeLeader":
+                    throw new WrongUsageException("commands.teams.makeLeader.player");
+                case "stats":
+                    throw new WrongUsageException("commands.teams.stats.color");
+                case "accept":
+                    throw new WrongUsageException("commands.teams.accept.uuid");
+                case "decline":
+                    throw new WrongUsageException("commands.teams.decline.uuid");
+                case "leave":
+                    if (!commandSenderInTeam){
+                        throw new CommandException("commands.teams.leave.noTeam");
+                    } else if (isSenderTeamLeader) {
+                        throw new CommandException("commands.teams.leave.leader");
+                    }
+            }
         }
 
-        byte teamID = ModConstants.COLORS.get(args[2]);
 
-        if (player_team_id != 0) {
-            sender.sendMessage(new TextComponentString("The player is already on the team").setStyle(new Style().setColor(TextFormatting.RED)));
-            return;
+
+        if (args.length == 2){
+            switch (args[0]){
+                case "create":
+                    if (commandSenderInTeam) {
+                        throw new CommandException("commands.teams.inTeam");
+                    }
+                    break;
+                case "invite":
+                case "kick":
+                    if (!commandSenderInTeam){
+                        throw new CommandException("commands.teams.noTeam");
+                    } else if (!isSenderTeamLeader) {
+                        throw new CommandException("commands.teams.permission");
+                    }
+                    break;
+                case  "makeLeader":
+                    if (!commandSenderInTeam) {
+                        throw new CommandException("commands.teams.inTeam");
+                    } else if (!isSenderTeamLeader) {
+                        throw new CommandException("commands.teams.permission");
+                    }
+                    break;
+                case "accept":{
+                    if (commandSenderInTeam) {
+                        throw new CommandException("commands.teams.inTeam");
+                    }
+                    break;
+                }
+                case "stats":
+                    if (!teamIsExist) {
+                        throw new CommandException("commands.teams.team.exist");
+                    }
+                    break;
+            }
         }
 
-        TeamsWorldData.putPlayer(teamID, player.getUniqueID(), server.getWorld(player.dimension));
-        cap.setTeamID(teamID);
+        if (onlinePlayerArgs.contains(args[0])){
+            boolean isPlayerOnline = Lists.newArrayList(server.getPlayerList().getOnlinePlayerNames()).contains(args[1]);
+            if (!isPlayerOnline){
+                throw new PlayerNotFoundException("commands.generic.player.notFound", args[1]);
+            }
+
+            EntityPlayerMP target = server.getPlayerList().getPlayerByUsername(args[1]);
+
+            switch (args[0]){
+                case "invite":
+                    this.invitePlayer(target, commandSender);
+                    break;
+                case "makeLeader":
+                    this.makeLeader(target, commandSender); // exception ~player is leader~
+                    break;
+                case "kick":
+                    this.kickPlayer(target, commandSender);
+                    break;
+            }
+            return;
+
+        } else if (colorArgs.contains(args[0])){
+            Object obj = ModConstants.COLORS.get(args[1]);
+
+            if (obj == null){
+                throw new CommandException("commands.teams.color.noSuchColor");
+            }
+
+            byte colorID = (byte) obj;
+
+            switch (args[0]) {
+                case "create":
+                    this.createTeam(commandSender, colorID);
+                    break;
+                case "stats":
+                    this.sendStatsToPlayer(colorID, commandSender);
+                    break;
+            }
+            return;
+
+        } else if (anyPlayerArgs.contains(args[0])){
+            boolean playerHasSuchInvitation = InvitationsBuffer.playerHasSuchInvitation(UUID.fromString(args[1]), commandSender);
+
+            if (!playerHasSuchInvitation){
+                throw new CommandException("commands.teams.uuid.noSuchUUID");
+            }
+
+            switch (args[0]){
+                case "accept":
+                    this.acceptInviation(commandSender, UUID.fromString(args[1]));
+                    break;
+                case "decline":
+                    this.removeIntvitation(commandSender, UUID.fromString(args[1]), true);
+                    break;
+            }
+            return;
+
+        } else {
+            switch (args[0]){
+                case "invitations":
+                    if (args.length == 1) {
+                        this.sendInvitationsToPlayer(commandSender, 0);
+                        return;
+                    }
+
+                    try {
+                        int page = parseInt(args[1], 1, InvitationsBuffer.getPlayerInvitations(commandSender).size());
+                        this.sendInvitationsToPlayer(commandSender, page - 1);
+                    } catch (NumberInvalidException e){
+                        throw new CommandNotFoundException();
+                    }
+                    return;
+                case "leave":
+                    this.leaveTeam(commandSender);
+                    return;
+            }
+        }
+
+        throw new WrongUsageException("commands.teams.usage");
     }
 
+
     @Override
-    public List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
-        if (args.length == 1){
-            return getListOfStringsMatchingLastWord(args, "add", "kick");
-        } else if (args.length == 2) {
-            return getListOfStringsMatchingLastWord(args, server.getOnlinePlayerNames());
-        } else {
-            return (args.length == 3 && args[0].equals("add")) ? getListOfStringsMatchingLastWord(args, ModConstants.COLORS.keySet()) : Collections.emptyList();
+    public List<String> getTabCompletions(MinecraftServer server,  ICommandSender sender, String[] args, @Nullable BlockPos targetPos) {
+        EntityPlayerMP commandSender;
+
+        try {
+            commandSender = getCommandSenderAsPlayer(sender);
+        } catch (PlayerNotFoundException e) {
+            throw new RuntimeException(e);
         }
+
+
+        byte senderTeamId = CapUtils.getTeamID(commandSender);
+        boolean isSenderTeamLeader = Utils.isTeamLeader(commandSender);
+        boolean commandSenderInTeam = senderTeamId != 0;
+        if (args.length == 3){
+            return Collections.emptyList();
+        }
+
+        if (args.length == 1){
+            if (isSenderTeamLeader){
+                return getListOfStringsMatchingLastWord(args, "kick", "leave", "stats", "makeLeader", "invitations", "invite");
+            } else if (commandSenderInTeam) {
+                return getListOfStringsMatchingLastWord(args,  "leave", "stats", "invitations");
+            } else {
+                return getListOfStringsMatchingLastWord(args, "create", "stats", "invitations");
+            }
+        } else {
+            if (onlinePlayerArgs.contains(args[0])){
+                return getListOfStringsMatchingLastWord(args, server.getOnlinePlayerNames());
+            } else if (colorArgs.contains(args[0])) {
+                switch (args[0]){
+                    case "create":
+                        return getListOfStringsMatchingLastWord(args, getAvaliableColors());
+                    case "stats":
+                        return getListOfStringsMatchingLastWord(args, getUnavaliableColor());
+                }
+            } else if (args[0].equals("invitations") || args[0].equals("leave")) {
+                return Collections.emptyList();
+            } else {
+                return getListOfStringsMatchingLastWord(args, InvitationsBuffer.getPlayerInvitations(commandSender));
+            }
+        }
+
+        return Collections.emptyList();
     }
 
     @Override
     public int getRequiredPermissionLevel() {
         return DefaultPermissionLevel.OP.ordinal();
     }
+
+    public List<String> getAvaliableColors(){
+        Set<String> existingTeams = getUnavaliableColor();
+        Set<String> allColors = Sets.newHashSet(ModConstants.COLORS.keySet());
+
+
+        List<String> toReturn = Lists.newArrayList(Sets.difference(allColors, existingTeams));
+        toReturn.remove("white");
+        return toReturn;
+    }
+
+    public Set<String> getUnavaliableColor(){
+        NBTTagCompound teams = TeamsWorldData.getTeams(CapUtils.DATA_WORLD);
+        Set<String> existingTeams = new HashSet<>();
+
+        for (byte i = 1; i < 16; i++){
+            if (teams.hasKey(String.valueOf(i))){
+                existingTeams.add(ModConstants.COLORS_BYTES.get(i));
+            }
+        }
+
+        return existingTeams;
+    }
+
+    // Command Execution
+
+    public void acceptInviation(EntityPlayerMP player, UUID invitaion){
+        EntityPlayerMP sender = Utils.getPlayerByUUID(invitaion);
+        byte teamID = CapUtils.getTeamID(sender);
+        Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(player.getName(), true), teamID);
+        this.putPlayerInTeam(player, teamID);
+        this.removeIntvitation(player, invitaion, false);
+    }
+
+    public void removeIntvitation(EntityPlayerMP player, UUID invitation, boolean resend){
+        int index = InvitationsBuffer.removeInvitation(player, invitation);
+        if (InvitationsBuffer.getPlayerInvitations(player).isEmpty() || !resend){
+            ServerMod.network.sendTo(new SendInvitationWithOD("", 0, 0, (byte) 0, UUID.randomUUID(), true), player);
+        } else {
+            this.sendInvitationsToPlayer(player, index);
+        }
+
+    }
+
+    public void createTeam(EntityPlayerMP player, byte color) throws CommandException {
+        if (getUnavaliableColor().contains(ModConstants.COLORS_BYTES.get(color))){
+            throw new CommandException("commands.teams.color.noSuchColor"); // new translation key
+        }
+
+        this.putPlayerInTeam(player, color);
+        TeamsWorldData.setTeamAdvancementAmount(color, Utils.getPlayerCompletedAdvancements(player).size());
+        Utils.sendMessageToAll(Messages.getCreateMessage(player.getName(), color));
+    }
+
+    private void putPlayerInTeam(EntityPlayerMP player, byte color){
+        TeamsWorldData.getTeamOrCreate(color);
+        TeamsWorldData.putPlayer(color, player.getUniqueID());
+        CapUtils.getStatsCapability(player).setTeamID(color);
+        SMEventHandler.updateDisplayName(player, false);
+    }
+
+    public void invitePlayer(EntityPlayerMP target, EntityPlayerMP sender) throws CommandException {
+        if (target.equals(sender)){
+            throw new CommandException("commands.teams.incorrectTarget");
+        }
+
+        if (InvitationsBuffer.playerHasSuchInvitation(sender.getUniqueID(), target)){
+            throw new CommandException("commands.teams.invite.more");
+        }
+
+        if (InvitationsBuffer.getPlayerInvitations(target).size() >= 99){
+            throw new CommandException("commands.teams.invite.limit");
+        }
+
+        InvitationsBuffer.createInvitations(sender.getUniqueID(), target.getUniqueID());
+        this.sendInvitationsToPlayer(target, InvitationsBuffer.getPlayerInvitations(target).size() - 1);
+    }
+
+    public void makeLeader(EntityPlayerMP newLeader, EntityPlayerMP oldLeader) throws CommandException {
+        if (Utils.isTeamLeader(newLeader)){
+            throw new CommandException("commands.teams.incorrectTarget");
+        } else if (!Utils.playerInSameTeam(newLeader, CapUtils.getTeamID(oldLeader))) {
+            throw new CommandException("commands.teams.notSameTeam");
+        }
+
+        byte teamID = CapUtils.getTeamID(oldLeader);
+        List<UUID> players = CapUtils.getTeamPlayers(teamID);
+        int i = players.indexOf(newLeader.getUniqueID());
+        TeamsWorldData.setNewLeader(i, teamID);
+        Utils.sendMessageToTeam(Messages.getNewLeaderMessage(newLeader.getName()), teamID);
+        SMEventHandler.updateDisplayName(newLeader, false);
+        SMEventHandler.updateDisplayName(oldLeader, false);
+    }
+
+    public void kickPlayer(EntityPlayerMP target, EntityPlayerMP sender) throws CommandException {
+        byte teamID = CapUtils.getTeamID(sender);
+
+        if (target.equals(sender)){
+            throw new CommandException("commands.teams.incorrectTarget");
+        } else if (!Utils.playerInSameTeam(target, teamID)) {
+            throw new CommandException("commands.teams.notSameTeam");
+        }
+        TeamsWorldData.toDefaultTeam(target);
+
+        Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(target.getName(), false), teamID);
+        target.sendMessage(new TextComponentTranslation("commands.teams.kick.message.toPlayer", sender.getName()).setStyle(new Style().setColor(TextFormatting.RED)));
+        SMEventHandler.updateDisplayName(target, false);
+    }
+
+    public void sendStatsToPlayer(byte color, EntityPlayerMP target) throws CommandException {
+        if (getAvaliableColors().contains(ModConstants.COLORS_BYTES.get(color))){
+            throw new CommandException("commands.teams.color.noSuchColor"); // new translation key
+        }
+
+        target.sendMessage(Messages.getStatsMessage(color));
+    }
+
+    public void sendInvitationsToPlayer(EntityPlayerMP target, Integer index){
+        List<UUID> invitations = InvitationsBuffer.getPlayerInvitations(target);
+        if (invitations.isEmpty()){
+            target.sendMessage(new TextComponentTranslation("commands.teams.invitations.output")
+                    .setStyle(new Style().setColor(TextFormatting.GOLD).setBold(true)));
+            return;
+        }
+
+        UUID sender = invitations.get(index);
+
+        EntityPlayerMP player = Utils.getPlayerByUUID(sender);
+
+//        if (!server.getPlayerList().getPlayers().contains(player)){
+//            player = Utils.loadPlayer(sender, CapUtils.DATA_WORLD);
+//        }
+
+        byte playerTeam = CapUtils.getTeamID(player);
+
+        ServerMod.network.sendTo(new SendInvitationWithOD(player.getName(), index + 1, invitations.size(), playerTeam, sender, false), target);
+    }
+
+    public void leaveTeam(EntityPlayerMP player){
+        byte teamID = TeamsWorldData.toDefaultTeam(player);
+        SMEventHandler.updateDisplayName(player, false);
+        Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(player.getName(), false), teamID);
+    }
+
 }

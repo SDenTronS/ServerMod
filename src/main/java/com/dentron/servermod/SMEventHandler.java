@@ -1,41 +1,44 @@
 package com.dentron.servermod;
 
 
+import com.dentron.servermod.commands.commandTeam.InvitationsBuffer;
 import com.dentron.servermod.network.UpdateNoneBaseGUI;
 import com.dentron.servermod.teams.ModPlayerStatsHandler;
+import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.TeamsWorldData;
 import com.dentron.servermod.timers.TimerUpdate;
 import com.dentron.servermod.utils.CapUtils;
 import com.dentron.servermod.utils.ModConstants;
+import com.google.common.collect.Lists;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
+import net.minecraft.network.play.server.SPacketPlayerListItem;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.text.Style;
-import net.minecraft.util.text.TextComponentTranslation;
-import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.*;
 import net.minecraft.world.DimensionType;
 import net.minecraft.world.GameType;
-import net.minecraft.world.WorldServer;
-import net.minecraftforge.event.entity.EntityJoinWorldEvent;
+import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.AdvancementEvent;
-import net.minecraftforge.event.world.WorldEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent;
 import net.minecraftforge.fml.common.network.FMLNetworkEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
-import java.util.HashMap;
-import java.util.UUID;
+import java.lang.reflect.Field;
+import java.util.*;
+
+import static com.dentron.servermod.utils.Utils.isTeamLeader;
 
 @Mod.EventBusSubscriber(modid = ServerMod.MODID)
 public class SMEventHandler {
@@ -54,18 +57,13 @@ public class SMEventHandler {
             return;
         }
 
-        TeamsWorldData.TeamObject team = CapUtils.getTeam(player);
         boolean flag = true;
 
-        for (UUID uuid : team.getPlayers()){
-            EntityPlayerMP teammate = (EntityPlayerMP) event.getEntityPlayer().world.getPlayerEntityByUUID(uuid);
+        for (UUID uuid : CapUtils.getTeamPlayers(teamID)){
+            EntityPlayerMP teammate = Utils.getPlayerByUUID(uuid);
 
-            if (teammate ==  player){
+            if (teammate.getUniqueID() == player.getUniqueID()){
                 continue;
-            }
-
-            if (teammate == null) {
-                teammate = Utils.loadPlayer(uuid, player.getEntityWorld());
             }
 
             if (teammate.getAdvancements().getProgress(event.getAdvancement()).isDone()) {
@@ -74,7 +72,7 @@ public class SMEventHandler {
         }
 
         if (flag){
-            boolean needMsg = TeamsWorldData.addAdvancement(teamID, CapUtils.getDataWorld());
+            boolean needMsg = TeamsWorldData.addAdvancement(teamID);
 
             if (needMsg){
                 sendCoordinatesToAll(teamID);
@@ -84,7 +82,7 @@ public class SMEventHandler {
 
     public static void sendCoordinatesToAll(byte teamID){
         BlockPos pos = Utils.getTeamBasePos(teamID);
-        Utils.sendMessageToAll(Utils.getBasePosMessage(teamID, pos));
+        Utils.sendMessageToAll(Messages.getBasePosMessage(teamID, pos));
     }
 
     @SubscribeEvent
@@ -147,6 +145,7 @@ public class SMEventHandler {
     }
 
 
+
 //    @SubscribeEvent
 //    public static void onWorldLoad(WorldEvent.Load event){
 //        server = FMLCommonHandler.instance().getMinecraftServerInstance();
@@ -162,6 +161,7 @@ public class SMEventHandler {
         CapUtils.DATA_WORLD = server.getWorld(DimensionType.OVERWORLD.getId());
         TimerUpdate.updateWorld(CapUtils.DATA_WORLD);
         TimerUpdate.updatePoses();
+        InvitationsBuffer.resetInvitations();
         loadConstants();
     }
 
@@ -187,14 +187,86 @@ public class SMEventHandler {
     }
 
 
-    @SideOnly(Side.SERVER)
     @SubscribeEvent
-    public static void onJoin(PlayerEvent.PlayerLoggedInEvent event){
+    public static void onJoin(PlayerEvent.PlayerLoggedInEvent event) {
         EntityPlayer entity = event.player;
         EntityPlayerMP player = server.getPlayerList().getPlayerByUUID(entity.getUniqueID());
         boolean flag = TimerUpdate.teamHasActiveBase(CapUtils.getTeamID(player));
         ServerMod.network.sendTo(new UpdateNoneBaseGUI(!flag), player);
+
+        updateDisplayName(player, true);
     }
+
+    public static void updateDisplayName(EntityPlayerMP player, boolean updateOthersForPlayer){
+        SPacketPlayerListItem packetToAll = getUpdateNamePacket(Collections.singletonList(player));
+        server.getPlayerList().sendPacketToAllPlayers(packetToAll);
+
+        if (!updateOthersForPlayer){return;}
+
+        List<EntityPlayerMP> playersList = Lists.newArrayList(server.getPlayerList().getPlayers());
+        playersList.remove(player);
+
+        if (!playersList.isEmpty()) {
+            SPacketPlayerListItem packetToPlayer = getUpdateNamePacket(playersList);
+            player.connection.sendPacket(packetToPlayer);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static SPacketPlayerListItem getUpdateNamePacket(Iterable<EntityPlayerMP> playersIn) {
+        SPacketPlayerListItem packet = new SPacketPlayerListItem(SPacketPlayerListItem.Action.UPDATE_DISPLAY_NAME, playersIn);
+
+        try {
+            Field fieldDisplayName = ObfuscationReflectionHelper.findField(SPacketPlayerListItem.AddPlayerData.class, "field_179965_e");
+            Field fieldPlayers = ObfuscationReflectionHelper.findField(SPacketPlayerListItem.class, "field_179769_b");
+
+            List<SPacketPlayerListItem.AddPlayerData> list = (List<SPacketPlayerListItem.AddPlayerData>) fieldPlayers.get(packet);
+
+            Iterator<EntityPlayerMP> iter = playersIn.iterator();
+
+            for (SPacketPlayerListItem.AddPlayerData data : list){
+                ITextComponent displayName = getDisplayName(iter.next());
+
+                fieldDisplayName.set(data, displayName);
+            }
+
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+
+        return packet;
+    }
+
+    private static ITextComponent getDisplayName(EntityPlayerMP player){
+        TextFormatting color = ModConstants.COLORS_TEXT_STYLE.get(CapUtils.getTeamID(player)).getColor();
+
+        ITextComponent displayName = new TextComponentString(player.getName());
+        Style style = displayName.getStyle().setColor(color);
+        displayName.setStyle(style);
+
+        if (isTeamLeader(player)){
+            displayName.appendText(" ");
+            Style starStyle = new Style().setColor(TextFormatting.YELLOW);
+            displayName.appendSibling(new TextComponentTranslation("nickname.emote.star").setStyle(starStyle));
+        }
+
+        return displayName;
+    }
+
+
+
+//    @SubscribeEvent
+//    public static void onChatMessage(ClientChatEvent event){
+//        String playerName = event.
+//        String msg = event.getMessage();
+//
+//        TextFormatting color = ModConstants.COLORS_TEXT_STYLE.get(CapUtils.getTeamID(event.getPlayer())).getColor();
+//
+//        String formattedName = new TextComponentString(playerName).setStyle(new Style().setColor(color)).getFormattedText();
+//        msg = "<" + formattedName + "> " + msg;
+//
+//        event.setComponent(new TextComponentString(msg));
+//    }
 
     @SideOnly(Side.CLIENT)
     @SubscribeEvent
@@ -212,6 +284,14 @@ public class SMEventHandler {
         Minecraft mc=Minecraft.getMinecraft();
         changedWindowTitle=mc.getSession().getUsername() + " not connected";
     }
+
+//    @SubscribeEvent
+//    public void test(RenderGameOverlayEvent event){
+//        event.getType().equals(RenderGameOverlayEvent.ElementType.CHAT);
+//        event.getResolution().
+//
+//        ClickEvent action =
+//    }
 
     public static String getAndResetChangedWindowTitle() {
         String result=changedWindowTitle;

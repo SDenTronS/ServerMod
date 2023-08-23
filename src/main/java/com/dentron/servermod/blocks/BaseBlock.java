@@ -1,12 +1,12 @@
 package com.dentron.servermod.blocks;
 
 import com.dentron.servermod.Registration;
-import com.dentron.servermod.SMEventHandler;
 import com.dentron.servermod.ServerMod;
 import com.dentron.servermod.network.UpdateBaseOnClient;
 import com.dentron.servermod.network.UpdateNoneBaseGUI;
 import com.dentron.servermod.screens.ScreenHandler;
 import com.dentron.servermod.tileentities.BaseTile;
+import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.timers.TimerUpdate;
@@ -115,12 +115,12 @@ public class BaseBlock extends Block {
     public boolean removedByPlayer(IBlockState state, World worldIn, BlockPos pos, EntityPlayer player, boolean willHarvest) {
         if (!worldIn.isRemote) {
             changePoses(pos, false);
-            notifyBaseDestroy(Utils.getBaseOwner(pos));
+            notifyBaseDestroy(Utils.getCurrentBaseColor(pos));
         }
         return super.removedByPlayer(state, worldIn, pos, player, willHarvest);
     }
 
-    private void changePoses( BlockPos pos, boolean flag){
+    private void changePoses(BlockPos pos, boolean flag){
         ModWorldData data = ModWorldData.forWorld(CapUtils.DATA_WORLD);
         if (flag) {
             data.putPos(pos);
@@ -133,23 +133,19 @@ public class BaseBlock extends Block {
 
     public static void notifyBaseDestroy(byte teamID){
         List<UUID> players = CapUtils.getTeamPlayers(teamID);
-        Utils.sendMessageToAll(Utils.getBaseDestroyMessage(teamID));
+        Utils.sendMessageToAll(Messages.getBaseDestroyMessage(teamID));
+
 
         for (UUID uuid : players){
-            EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
-
-            if (player == null){
+            if (!Utils.isPlayerOnline(uuid)){
                 return;
             }
+
+            EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
 
             if (!CapUtils.hasActiveBase(teamID)){
                 ServerMod.network.sendTo(new UpdateNoneBaseGUI(true), player);
             }
         }
-    }
-
-    @Override
-    public boolean canPlaceBlockAt(World worldIn, BlockPos pos) {
-        return super.canPlaceBlockAt(worldIn, pos);
     }
 }

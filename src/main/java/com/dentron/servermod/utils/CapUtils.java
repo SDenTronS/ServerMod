@@ -6,6 +6,7 @@ import com.dentron.servermod.tileentities.BaseTile;
 import com.dentron.servermod.timers.TimerUpdate;
 import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.worlddata.TeamsWorldData;
+import com.google.common.collect.Lists;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.player.EntityPlayer;
@@ -26,7 +27,7 @@ public class CapUtils {
 
     public static TeamsWorldData.TeamObject getTeam(EntityPlayer player){
         byte teamID = getTeamID(player);
-        return TeamsWorldData.getTeam(teamID, DATA_WORLD);
+        return TeamsWorldData.getTeam(teamID);
     }
 
     public static byte getTeamID(EntityPlayer player){
@@ -43,7 +44,11 @@ public class CapUtils {
     }
 
     public static List<UUID> getTeamPlayers(byte teamID){
-        return TeamsWorldData.getTeam(teamID, getDataWorld()).getPlayers();
+        return TeamsWorldData.getTeam(teamID).getPlayers();
+    }
+
+    public static List<BlockPos> getTeamPosition(byte teamID){
+        return TeamsWorldData.getTeam(teamID).getPosition();
     }
 
 

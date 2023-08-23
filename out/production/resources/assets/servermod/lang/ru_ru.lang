@@ -1,0 +1,30 @@
+tile.test.name=Блок теста
+tile.base_block.name=Блок базы
+gui.servermod.activate_button=Активировать
+messages.events.change_dimension=Вы чувствуете слабость, находясь не в нижнем мире
+messages.team.is_null=Вы не состоите ни в одной из команд
+messages.player.base_deactivate=Время активациии вашей базы на {x=%s, y=%s, z=%s} истекло
+messages.player.base_captured=%s команда захватила вашу базу на {x=%s, y=%s, z=%s}
+messages.player.base_destroyed=%s команда теряет одну из своих баз
+messages.player.remaining_live=Оставшиеся жинзи - %s
+messages.player.full_death=Вы железобетонно мертвы
+messages.player.dead_activate=Вы слишком мерты, чтобы сделать это
+messages.events.team_complete=%s команда выполняет %s достижений
+messages.events.base_pos=Их база находится в области %s блоков от точки {x=%s, z=%s}
+messages.events.null_base=Но команда не активировала ни одной базы
+messages.color.white=Белая
+messages.color.orange=Оранжевая
+messages.color.magenta=Пурпурная
+messages.color.light_blue=Голубая
+messages.color.yellow=Жёлтая
+messages.color.lime=Лаймовая
+messages.color.pink=Розовая
+messages.color.grey=Серая
+messages.color.light_grey=Светло-серая
+messages.color.cyan=Бирюзовая
+messages.color.purple=Фиолетовая
+messages.color.blue=Синяя
+messages.color.brown=Коричневая
+messages.color.green=Зелёная
+messages.color.red=Красная
+messages.color.black=Чёрная

@@ -1,34 +1,48 @@
 package com.dentron.servermod.utils;
 
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextFormatting;
 
 import java.util.*;
 
 public class ModConstants {
+    public static final int INVITATIONS_CHATLINE_ID = 1581;
     public static final int MAX_TEAM_MEMBERS = 999;
     public static final int BASE_TIMER = 5400;
+    public static final double PERCENT_OF_BORDER_RADIUS = 20;
+    public static final double PERCENT_RADIUS_INACCURASY = 22.5;
+    public static final double ANGLE_STEP = 5;  // must be divider 360
     public static final byte PLAYER_LIVES = (byte) 15;
     public static final byte ADVANCEMENTS_AMOUNT = 30;
     public static final int BASE_MSG_RADIUS = 5000 + (1);
     public static final Style RED_BOLD = new Style().setBold(true).setColor(TextFormatting.RED);
     public static final Style WHITE_BOLD = new Style().setBold(true).setColor(TextFormatting.WHITE);
 
-    public static class Score{
-        public static final int ADVANCEMENT = 250;
-    }
-
-    public static final HashMap<String, Byte> COLORS = new HashMap<>();
+    public static final BiMap<String, Byte> COLORS = HashBiMap.create();
     static {
-        String[] values = new String[] {"WHITE", "ORANGE", "MAGENTA", "LIGHT_BLUE", "YELLOW", "LIME", "PINK", "GRAY", "LIGHT_GRAY", "CYAN",
-                "PURPLE", "BLUE", "BROWN", "GREEN", "RED", "BLACK"};
-
+        String[] values = new String[] {"white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan", "purple",
+                "blue", "brown", "green", "red", "black"};
 
         for (byte i = 0; i <= 15; i++){
             COLORS.put(values[i], i);
         }
     }
+
+    public static final BiMap<Byte, String> COLORS_BYTES = COLORS.inverse();
+
+    public static final HashMap<Byte, String> COLORS_FROM_BYTES = new HashMap<>();
+    static {
+        String[] values = new String[] {"White", "Orange", "Magenta", "Light blue", "Yellow", "Lime", "Pink", "Gray", "Light gray", "Cyan", "Purple",
+                "Blue", "Brown", "Green", "Red", "Black"};
+
+        for (byte i = 0; i <= 15; i++){
+            COLORS_FROM_BYTES.put(i, values[i]);
+        }
+    }
+
 
     public static final HashMap<Byte, Style> COLORS_TEXT_STYLE = new HashMap<>();
     static {

@@ -4,6 +4,7 @@ import com.dentron.servermod.blocks.BaseBlock;
 import com.dentron.servermod.blocks.CrateBlock;
 import com.dentron.servermod.items.BaseSoulItem;
 import com.dentron.servermod.network.ActivateBase;
+import com.dentron.servermod.network.SendInvitationWithOD;
 import com.dentron.servermod.network.UpdateBaseOnClient;
 import com.dentron.servermod.network.UpdateNoneBaseGUI;
 import com.dentron.servermod.renderer.BaseTileRenderer;
@@ -87,6 +88,7 @@ public class Registration {
         network.registerMessage(ActivateBase.Handler.class, ActivateBase.class, 1, Side.SERVER);
         network.registerMessage(UpdateBaseOnClient.Handler.class, UpdateBaseOnClient.class, 4, Side.CLIENT);
         network.registerMessage(UpdateNoneBaseGUI.Handler.class, UpdateNoneBaseGUI.class, 5, Side.CLIENT);
+        network.registerMessage(SendInvitationWithOD.Handler.class, SendInvitationWithOD.class, 7, Side.CLIENT);
     }
 
 
