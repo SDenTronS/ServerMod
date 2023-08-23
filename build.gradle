@@ -24,7 +24,7 @@ task prepareAssets(type: Copy) {
     from project.file('src/main/resources')
     into project.file('build/classes/java/main')
 }
-
+    
 classes.dependsOn(prepareAssets)
 
 minecraft {

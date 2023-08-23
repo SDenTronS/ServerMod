@@ -305,6 +305,7 @@ public class CommandTeam extends CommandBase {
         TeamsWorldData.putPlayer(color, player.getUniqueID());
         CapUtils.getStatsCapability(player).setTeamID(color);
         SMEventHandler.updateDisplayName(player, false);
+        TeamsWorldData.setTeamAdvancementAmount(color, Utils.recountTeamAdvancements(color, TeamsWorldData.getTeam(color).getAdv_amount()));
     }
 
     public void invitePlayer(EntityPlayerMP target, EntityPlayerMP sender) throws CommandException {

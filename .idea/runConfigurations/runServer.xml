@@ -8,7 +8,7 @@
     <module name="ServerMod.main"/>
     <envs>
       <env name="MCP_TO_SRG" value="$PROJECT_DIR$\build\createSrgToMcp\output.srg"/>
-      <env name="MOD_CLASSES" value="$PROJECT_DIR$\build\resources\main;$PROJECT_DIR$\build\classes\java\main"/>
+      <env name="MOD_CLASSES" value="$PROJECT_DIR$\out\production\resources;$PROJECT_DIR$\out\production\classes"/>
       <env name="mainClass" value="net.minecraft.launchwrapper.Launch"/>
       <env name="MCP_MAPPINGS" value="snapshot_20171003-1.12"/>
       <env name="FORGE_VERSION" value="14.23.5.2859"/>

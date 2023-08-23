@@ -1,11 +1,11 @@
 package com.dentron.servermod.utils;
 
 import com.dentron.servermod.SMEventHandler;
-import com.dentron.servermod.ServerMod;
 import com.dentron.servermod.tileentities.BaseTile;
 import com.dentron.servermod.worlddata.ModWorldData;
+import com.google.common.collect.Sets;
 import com.mojang.authlib.GameProfile;
-import net.minecraft.client.Minecraft;
+import net.minecraft.advancements.*;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.management.PlayerInteractionManager;
@@ -15,12 +15,10 @@ import net.minecraft.util.text.*;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.fml.common.FMLCommonHandler;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
+import net.minecraftforge.fml.common.ObfuscationReflectionHelper;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.lang.reflect.Field;
+import java.util.*;
 
 
 public class Utils {
@@ -76,30 +74,19 @@ public class Utils {
         }
     }
 
-    public static ITextComponent getBasePosMessage(byte teamID, BlockPos pos){
-        String local_key = ModConstants.COLORS_LOCALIZE_KEYS.get(teamID);
-        int radius = ModConstants.BASE_MSG_RADIUS;
-        TextComponentTranslation component;
-        if (pos != null){
-            int X = -radius + (int) (Math.random() * (2 * radius));
-            int MAX_Z = (int) (Math.sqrt(Math.pow(radius, 2) - Math.pow(X, 2)));
-            int Z = -MAX_Z + (int) (Math.random() * (2 * MAX_Z + 1));
-            component = new TextComponentTranslation("messages.events.base_pos", radius - 1, pos.getX() + X, pos.getZ() + Z);
-        }
-        else {
-            component = new TextComponentTranslation("messages.events.null_base");
-        }
+    public static void sendMessageToTeam(ITextComponent msg, byte teamId){
+        List<UUID> team = CapUtils.getTeamPlayers(teamId);
+        for (UUID uuid : team){
+            if (!isPlayerOnline(uuid)){
+                continue;
+            }
 
-        ITextComponent team = new TextComponentTranslation(local_key).setStyle(ModConstants.COLORS_TEXT_STYLE.get(teamID).setBold(true));
-        Style GOLD_BOLD = new Style().setBold(true).setColor(TextFormatting.YELLOW);
-
-        return (new TextComponentString("------------------------------").setStyle(GOLD_BOLD)).appendText("\n")
-                .appendSibling(new TextComponentTranslation("messages.events.team_complete", team, ModConstants.ADVANCEMENTS_AMOUNT)).appendText("\n")
-                .appendSibling(component).appendText("\n")
-                .appendSibling(new TextComponentString("------------------------------"));
+            EntityPlayerMP player = getPlayerByUUID(uuid);
+            player.sendMessage(msg);
+        }
     }
 
-    public static byte getBaseOwner(BlockPos pos){
+    public static byte getCurrentBaseColor(BlockPos pos){
         TileEntity tile = CapUtils.DATA_WORLD.getTileEntity(pos);
         if (tile instanceof BaseTile){
             BaseTile te = (BaseTile) tile;
@@ -109,23 +96,67 @@ public class Utils {
         return 0;
     }
 
-    public static ITextComponent getBaseDestroyMessage(byte teamID){
-        Style RED_OBFUSCATED = new Style().setObfuscated(true).setBold(true).setColor(TextFormatting.DARK_RED);
-        String local_key = ModConstants.COLORS_LOCALIZE_KEYS.get(teamID);
-        ITextComponent team = new TextComponentTranslation(local_key).setStyle(ModConstants.COLORS_TEXT_STYLE.get(teamID));
-
-
-        return new TextComponentString("TT").setStyle(RED_OBFUSCATED)
-                .appendSibling(new TextComponentTranslation("messages.player.base_destroyed", team).setStyle(new Style().setBold(true).setColor(TextFormatting.DARK_RED).setObfuscated(false)))
-                .appendSibling(new TextComponentString("TT"));
+    public static EntityPlayerMP getPlayerByUUID(UUID uuid){
+        EntityPlayerMP player;
+        if (isPlayerOnline(uuid)){
+            player = SMEventHandler.server.getPlayerList().getPlayerByUUID(uuid);
+        } else {
+            player = loadPlayer(uuid, CapUtils.DATA_WORLD);
+        }
+        return player;
     }
 
-    public static EntityPlayerMP getPlayerByUUID(UUID uuid){
-        EntityPlayerMP player = null;
-        try {
-            player = SMEventHandler.server.getPlayerList().getPlayerByUUID(uuid);
+    public static boolean isPlayerOnline(UUID uuid){
+        return SMEventHandler.server.getEntityFromUuid(uuid) != null;
+    }
+
+    public static boolean isTeamLeader(EntityPlayerMP player){
+        byte teamId = CapUtils.getTeamID(player);
+        if (teamId == 0){
+            return false;
         }
-        catch (NullPointerException ignored){}
-        return player;
+
+        List<UUID> teamPlayers = CapUtils.getTeamPlayers(teamId);
+        UUID playerUUID = player.getUniqueID();
+
+        return teamPlayers.indexOf(playerUUID) == 0;
+    }
+
+    public static boolean playerInSameTeam(EntityPlayerMP player, byte teamId){
+        return CapUtils.getTeamID(player) == teamId;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static HashSet<Advancement> getPlayerCompletedAdvancements(EntityPlayerMP player){
+        Field progress = ObfuscationReflectionHelper.findField(PlayerAdvancements.class, "field_192758_f");
+
+        HashSet<Advancement> set = new HashSet<>();
+
+        try {
+            Map<Advancement, AdvancementProgress> map = (Map<Advancement, AdvancementProgress>) progress.get(player.getAdvancements());
+
+            for (Map.Entry<Advancement, AdvancementProgress> entry : map.entrySet()){
+                if (entry.getValue().isDone()){
+                    set.add(entry.getKey());
+                }
+            }
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+        return set;
+    }
+
+    public static int recountTeamAdvancements(byte teamID, int oldValue){
+        List<UUID> team = CapUtils.getTeamPlayers(teamID);
+        HashSet<Advancement> advancementsSet = new HashSet<>();
+
+        for (UUID uuid : team){
+            EntityPlayerMP player = getPlayerByUUID(uuid);
+            advancementsSet = Sets.newHashSet(Sets.union(advancementsSet, getPlayerCompletedAdvancements(player)));
+        }
+
+        return Math.max(advancementsSet.size(), oldValue);
     }
 }
