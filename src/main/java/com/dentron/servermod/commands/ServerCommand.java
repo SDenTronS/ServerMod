@@ -1,16 +1,20 @@
 package com.dentron.servermod.commands;
 
+import com.dentron.servermod.Registration;
 import com.dentron.servermod.SMEventHandler;
 import com.dentron.servermod.commands.commandTeam.InvitationsBuffer;
 import com.dentron.servermod.utils.CapUtils;
 import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.ModConstants;
 import com.dentron.servermod.utils.Utils;
+import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.worlddata.TeamsWorldData;
 import net.minecraft.command.*;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.Style;
@@ -53,8 +57,13 @@ public class ServerCommand extends CommandBase {
             return;
         }
 
+        if (args[0].equals("randomGen")){
+            randomGen(server);
+            return;
+        }
+
         if (args[0].equals("randomTeleport")){
-            randomTeleportTeams(server);
+            randomTeleport();
             return;
         }
 
@@ -137,24 +146,57 @@ public class ServerCommand extends CommandBase {
 
     }
 
-    public void randomTeleportTeams(MinecraftServer server) throws CommandException {
-            positions = new ArrayList<>();
-            WorldServer OVERWORLD = server.getWorld(DimensionType.OVERWORLD.getId());
-            border = OVERWORLD.getWorldBorder();
-            double WOLRD_RADIUS = (border.getDiameter() * (1 - ModConstants.PERCENT_OF_BORDER_DIAMETR / 100)) / 2;
-            double firstX = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterX();
-            double firstZ = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterZ();
-            positions.add(OVERWORLD.getTopSolidOrLiquidBlock(new BlockPos(firstX, 0, firstZ)));
-            spawn_radius = border.getDiameter() * (ModConstants.PERCENT_OF_BORDER_DIAMETR / 100);
+    public void randomGen(MinecraftServer server) throws CommandException {
+        NBTTagCompound data = ModWorldData.getRandomGen(CapUtils.DATA_WORLD);
 
-            for (byte i = 1; i <= 15; i++){
-                int last_index = positions.size() - 1;
-                BlockPos nextPos = getNextPos(OVERWORLD, positions.get(last_index).getX(), positions.get(last_index).getZ());
-                positions.add(nextPos);
+        if (!data.hasNoTags()){
+            throw new CommandException("commands.server.random.wasGen");
+        }
+
+        positions = new ArrayList<>();
+        WorldServer OVERWORLD = server.getWorld(DimensionType.OVERWORLD.getId());
+        border = OVERWORLD.getWorldBorder();
+        double WOLRD_RADIUS = (border.getDiameter() * (1 - ModConstants.PERCENT_OF_BORDER_DIAMETR / 100)) / 2;
+        double firstX = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterX();
+        double firstZ = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterZ();
+        positions.add(OVERWORLD.getTopSolidOrLiquidBlock(new BlockPos(firstX, 0, firstZ)));
+        spawn_radius = border.getDiameter() * (ModConstants.PERCENT_OF_BORDER_DIAMETR / 100);
+
+        for (byte i = 1; i <= 15; i++){
+            int last_index = positions.size() - 1;
+            BlockPos nextPos = getNextPos(OVERWORLD, positions.get(last_index).getX(), positions.get(last_index).getZ());
+            positions.add(nextPos);
+        }
+
+        ModWorldData.writeRandomGen(positions, CapUtils.DATA_WORLD);
+
+        System.out.println(positions.stream().map(BlockPos::getX).collect(Collectors.toList()));
+        System.out.println(positions.stream().map(BlockPos::getZ).collect(Collectors.toList()));
+    }
+
+    public void randomTeleport() throws CommandException {
+        NBTTagCompound data = ModWorldData.getRandomGen(CapUtils.DATA_WORLD);
+
+        if (data.hasNoTags()){
+            throw new CommandException("commands.server.random.notGen");
+        }
+
+        for (byte i = 1; i <= 15; i++){
+            List<UUID> team = CapUtils.getTeamPlayers(i);
+            for (UUID uuid : team){
+                if (!Utils.isPlayerOnline(uuid)) return;
+
+                EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
+                BlockPos position = BlockPos.fromLong(data.getLong(String.valueOf(i)));
+                player.setSpawnPoint(position, true);
+                player.inventory.clear();
+                player.setPositionAndUpdate(position.getX(), position.getY(), position.getZ());
+
+                if (!Utils.isTeamLeader(player)) return;
+
+                player.inventory.addItemStackToInventory(new ItemStack(Registration.BASE_BLOCK));
             }
-
-            System.out.println(positions.stream().map(BlockPos::getX).collect(Collectors.toList()));
-            System.out.println(positions.stream().map(BlockPos::getZ).collect(Collectors.toList()));
+        }
     }
 
 

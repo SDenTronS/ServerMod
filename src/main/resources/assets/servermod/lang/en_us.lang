@@ -63,3 +63,6 @@ commands.teams.notSameTeam=commands.teams.kick.wrongTarget
 messages.teams.entry=Player %s joins your team
 messages.teams.leave=Player %s has left your team
 messages.teams.newLeader=The new leader of the team - %s
+commands.server.random.notGen=Positions have not been generated. To generate positions run command /servermod randomGen
+commands.server.random.wasGen=Positions have already been generated. It is not available to repeat this operation.
+commands.team.spawnpoint.notGen=Positions have not been generated. Ask the administrator to generate the positions.

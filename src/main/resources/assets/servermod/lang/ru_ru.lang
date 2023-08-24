@@ -6,7 +6,7 @@ messages.team.is_null=Вы не состоите ни в одной из ком�
 messages.player.base_deactivate=Время активациии вашей базы на {x=%s, y=%s, z=%s} истекло
 messages.player.base_captured=%s команда захватила вашу базу на {x=%s, y=%s, z=%s}
 messages.player.base_destroyed=%s команда теряет одну из своих баз
-messages.player.remaining_live=Оставшиеся жинзи - %s
+messages.player.remaining_live=Оставшиеся жизни - %s
 messages.player.full_death=Вы железобетонно мертвы
 messages.player.dead_activate=Вы слишком мерты, чтобы сделать это
 messages.events.team_complete=%s команда выполняет %s достижений

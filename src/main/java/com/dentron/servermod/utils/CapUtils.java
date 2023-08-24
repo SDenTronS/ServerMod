@@ -53,9 +53,8 @@ public class CapUtils {
 
 
     public static boolean hasActiveBase(byte teamID){
-        ModWorldData data = ModWorldData.forWorld(getDataWorld());
         World world = DATA_WORLD;
-        for (BlockPos pos : data.basePoses){
+        for (BlockPos pos : ModWorldData.getPositions(DATA_WORLD)){
             TileEntity tile = world.getTileEntity(pos);
             if (tile == null){
                 continue;

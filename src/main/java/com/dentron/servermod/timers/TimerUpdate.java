@@ -69,9 +69,8 @@ public class TimerUpdate {
     }
 
     public static void updatePoses(){
-        ModWorldData data = ModWorldData.forWorld(CapUtils.DATA_WORLD);
         basePoses = new HashMap<>();
-        for (BlockPos tilePos : data.basePoses){
+        for (BlockPos tilePos : ModWorldData.getPositions(CapUtils.DATA_WORLD)){
             BaseTile tile = (BaseTile) overworld.getTileEntity(tilePos);
             if ((tile != null) && !tile.getTimer().is_times_up()){
                 basePoses.put(tile.getTeamColor(), tilePos);

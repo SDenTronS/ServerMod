@@ -9,14 +9,16 @@ import net.minecraft.world.storage.MapStorage;
 import net.minecraft.world.storage.WorldSavedData;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 public class ModWorldData extends WorldSavedData {
     private static final String DATA_NAME = ServerMod.MODID + "_ModWorldData";
-    public List<BlockPos> basePoses = new ArrayList<>();
+    private final List<BlockPos> basePoses = new ArrayList<>();
 
-    public NBTTagCompound baseData = new NBTTagCompound();
+    private final NBTTagCompound baseData = new NBTTagCompound();
+    private NBTTagCompound randomGenData = new NBTTagCompound();
 
     public ModWorldData() {
         super(DATA_NAME);
@@ -39,6 +41,22 @@ public class ModWorldData extends WorldSavedData {
             baseData.setTag(basePos, nbt.getTag(basePos));
         }
 
+        randomGenData = nbt.getCompoundTag("randomGen");
+    }
+
+    public static List<BlockPos> getPositions(WorldServer world){
+        ModWorldData data = forWorld(world);
+        return data.basePoses;
+    }
+
+    public static NBTTagCompound getBaseData(WorldServer world){
+        ModWorldData data = forWorld(world);
+        return data.baseData;
+    }
+
+    public static NBTTagCompound getRandomGen(WorldServer world){
+        ModWorldData data = forWorld(world);
+        return data.randomGenData;
     }
 
     @Override
@@ -52,6 +70,7 @@ public class ModWorldData extends WorldSavedData {
             compound.setTag(basePos, baseData.getTag(basePos));
         }
 
+        compound.setTag("randomGen", randomGenData);
         compound.setTag("positions", saveData);
         return compound;
     }
@@ -71,6 +90,15 @@ public class ModWorldData extends WorldSavedData {
             saver.basePoses.remove(pos);
             saver.markDirty();
         }
+    }
+
+    public static void writeRandomGen(List<BlockPos> positions, WorldServer world){
+        ModWorldData data = forWorld(world);
+        for (byte i = 1; i <= 15; i++){
+            data.randomGenData.setLong(String.valueOf(i), positions.get(i).toLong());
+        }
+
+        data.markDirty();
     }
 
     public static void activate_base(byte teamId, BlockPos pos, WorldServer world){

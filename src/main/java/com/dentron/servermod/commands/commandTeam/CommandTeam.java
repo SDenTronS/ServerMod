@@ -6,6 +6,7 @@ import com.dentron.servermod.network.SendInvitationWithOD;
 import com.dentron.servermod.utils.CapUtils;
 import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.Utils;
+import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.worlddata.TeamsWorldData;
 import com.dentron.servermod.utils.ModConstants;
 import com.google.common.collect.Lists;
@@ -67,6 +68,10 @@ public class CommandTeam extends CommandBase {
                     throw new WrongUsageException("commands.teams.accept.uuid");
                 case "decline":
                     throw new WrongUsageException("commands.teams.decline.uuid");
+                case "setSpawnPointOnRandomGen":
+                    if (!commandSenderInTeam) {
+                        throw new CommandException("commands.teams.leave.noTeam");
+                    }
                 case "leave":
                     if (!commandSenderInTeam){
                         throw new CommandException("commands.teams.leave.noTeam");
@@ -189,6 +194,9 @@ public class CommandTeam extends CommandBase {
                 case "leave":
                     this.leaveTeam(commandSender);
                     return;
+                case "setSpawnPointOnRandomGen":
+                    this.setSpawnPointOnRandomGen(commandSender);
+                    return;
             }
         }
 
@@ -210,17 +218,17 @@ public class CommandTeam extends CommandBase {
         byte senderTeamId = CapUtils.getTeamID(commandSender);
         boolean isSenderTeamLeader = Utils.isTeamLeader(commandSender);
         boolean commandSenderInTeam = senderTeamId != 0;
-        if (args.length == 3){
+        if (args.length >= 3){
             return Collections.emptyList();
         }
 
         if (args.length == 1){
             if (isSenderTeamLeader){
-                return getListOfStringsMatchingLastWord(args, "kick", "leave", "stats", "makeLeader", "invitations", "invite");
+                return getListOfStringsMatchingLastWord(args, "kick", "leave", "stats", "makeLeader", "invitations", "invite", "setSpawnPointOnRandomGen");
             } else if (commandSenderInTeam) {
-                return getListOfStringsMatchingLastWord(args,  "leave", "stats", "invitations");
+                return getListOfStringsMatchingLastWord(args,  "leave", "stats", "invitations", "setSpawnPointOnRandomGen");
             } else {
-                return getListOfStringsMatchingLastWord(args, "create", "stats", "invitations");
+                return getListOfStringsMatchingLastWord(args, "create", "stats", "invitations", "setSpawnPointOnRandomGen");
             }
         } else {
             if (onlinePlayerArgs.contains(args[0])){
@@ -280,14 +288,24 @@ public class CommandTeam extends CommandBase {
         this.removeIntvitation(player, invitaion, false);
     }
 
-    public void removeIntvitation(EntityPlayerMP player, UUID invitation, boolean resend){
+    public void removeIntvitation(EntityPlayerMP player, UUID invitation, boolean resend) {
         int index = InvitationsBuffer.removeInvitation(player, invitation);
-        if (InvitationsBuffer.getPlayerInvitations(player).isEmpty() || !resend){
+        if (InvitationsBuffer.getPlayerInvitations(player).isEmpty() || !resend) {
             ServerMod.network.sendTo(new SendInvitationWithOD("", 0, 0, (byte) 0, UUID.randomUUID(), true), player);
         } else {
             this.sendInvitationsToPlayer(player, index);
         }
+    }
 
+    public void setSpawnPointOnRandomGen(EntityPlayerMP player) throws CommandException {
+        NBTTagCompound data = ModWorldData.getRandomGen(CapUtils.DATA_WORLD);
+        if (data.hasNoTags()){
+            throw new CommandException("commands.team.spawnpoint.notGen");
+        }
+
+        byte teamID = CapUtils.getTeamID(player);
+        BlockPos position = BlockPos.fromLong(data.getLong(String.valueOf(teamID)));
+        player.setSpawnPoint(position, true);
     }
 
     public void createTeam(EntityPlayerMP player, byte color) throws CommandException {

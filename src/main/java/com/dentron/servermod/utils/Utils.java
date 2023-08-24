@@ -35,9 +35,8 @@ public class Utils {
 
     public static BlockPos getTeamBasePos(byte teamId){
         String id = String.valueOf(teamId);
-        ModWorldData saver = ModWorldData.forWorld(CapUtils.getDataWorld());
-        List<BlockPos> basePoses = saver.basePoses;
-        NBTTagCompound baseData = saver.baseData;
+        List<BlockPos> basePoses = ModWorldData.getPositions(CapUtils.DATA_WORLD);
+        NBTTagCompound baseData = ModWorldData.getBaseData(CapUtils.DATA_WORLD);
         int max_activations = 1;
         BlockPos toReturn = null;
 
