@@ -160,4 +160,5 @@ public class Utils {
 
         return Math.max(advancementsSet.size(), oldValue);
     }
+
 }

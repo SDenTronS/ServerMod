@@ -147,4 +147,8 @@ public class Messages {
         return firstComponent.setStyle(msgStyle).appendSibling(secondComponent).appendSibling(thirdComponent)
                 .appendSibling(fourthComponent).appendSibling(fifthComponent).appendSibling(sixthComponent);
     }
+
+    public static ITextComponent getSuccessCommandMessage(){
+        return new TextComponentTranslation("commands.feedback.success").setStyle(new Style().setColor(TextFormatting.DARK_GREEN).setBold(true));
+    }
 }

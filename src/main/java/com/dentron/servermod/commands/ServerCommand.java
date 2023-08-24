@@ -59,6 +59,7 @@ public class ServerCommand extends CommandBase {
 
         if (args[0].equals("randomGen")){
             randomGen(server);
+            sender.sendMessage(Messages.getSuccessCommandMessage());
             return;
         }
 
@@ -69,6 +70,7 @@ public class ServerCommand extends CommandBase {
 
         if (args[0].equals("withdrawTeam") && args.length == 2){
             withdrawTeam(args[1], getCommandSenderAsPlayer(sender));
+            sender.sendMessage(Messages.getSuccessCommandMessage());
             return;
         }
 
@@ -111,7 +113,6 @@ public class ServerCommand extends CommandBase {
             throw new PlayerNotFoundException("commands.generic.player.notFound", playerName);
         }
 
-
         UUID targetUUID = players.get(playerName);
         EntityPlayerMP player = Utils.getPlayerByUUID(targetUUID);
         boolean isTeamLeader = Utils.isTeamLeader(player);
@@ -123,18 +124,12 @@ public class ServerCommand extends CommandBase {
             SMEventHandler.updateDisplayName(player, false);
         }
 
-
         if (!isTeamLeader){
             return;
         }
 
         InvitationsBuffer.removeSentInvitations(targetUUID);
         List<UUID> team = CapUtils.getTeamPlayers(teamID);
-
-        if (team.isEmpty()){
-            TeamsWorldData.removeTeam(teamID);
-            return;
-        }
 
         TeamsWorldData.setTeamAdvancementAmount(teamID, Utils.recountTeamAdvancements(teamID, TeamsWorldData.getTeam(teamID).getAdv_amount()));
         UUID newLeader = team.get(0);

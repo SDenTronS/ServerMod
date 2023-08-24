@@ -70,11 +70,12 @@ public class CommandTeam extends CommandBase {
                     throw new WrongUsageException("commands.teams.decline.uuid");
                 case "setSpawnPointOnRandomGen":
                     if (!commandSenderInTeam) {
-                        throw new CommandException("commands.teams.leave.noTeam");
+                        throw new CommandException("commands.teams.noTeam");
                     }
+                    break;
                 case "leave":
                     if (!commandSenderInTeam){
-                        throw new CommandException("commands.teams.leave.noTeam");
+                        throw new CommandException("commands.teams.noTeam");
                     } else if (isSenderTeamLeader) {
                         throw new CommandException("commands.teams.leave.leader");
                     }
@@ -228,7 +229,7 @@ public class CommandTeam extends CommandBase {
             } else if (commandSenderInTeam) {
                 return getListOfStringsMatchingLastWord(args,  "leave", "stats", "invitations", "setSpawnPointOnRandomGen");
             } else {
-                return getListOfStringsMatchingLastWord(args, "create", "stats", "invitations", "setSpawnPointOnRandomGen");
+                return getListOfStringsMatchingLastWord(args, "create", "stats", "invitations");
             }
         } else {
             if (onlinePlayerArgs.contains(args[0])){
@@ -306,11 +307,12 @@ public class CommandTeam extends CommandBase {
         byte teamID = CapUtils.getTeamID(player);
         BlockPos position = BlockPos.fromLong(data.getLong(String.valueOf(teamID)));
         player.setSpawnPoint(position, true);
+        player.sendMessage(Messages.getSuccessCommandMessage());
     }
 
     public void createTeam(EntityPlayerMP player, byte color) throws CommandException {
         if (getUnavaliableColor().contains(ModConstants.COLORS_BYTES.get(color))){
-            throw new CommandException("commands.teams.color.noSuchColor"); // new translation key
+            throw new CommandException("commands.teams.color.unavailable", getAvaliableColors());
         }
 
         this.putPlayerInTeam(player, color);
@@ -374,11 +376,7 @@ public class CommandTeam extends CommandBase {
         recountTeamAdvancements(teamID);
     }
 
-    public void sendStatsToPlayer(byte color, EntityPlayerMP target) throws CommandException {
-        if (getAvaliableColors().contains(ModConstants.COLORS_BYTES.get(color))){
-            throw new CommandException("commands.teams.color.noSuchColor"); // new translation key
-        }
-
+    public void sendStatsToPlayer(byte color, EntityPlayerMP target){
         target.sendMessage(Messages.getStatsMessage(color));
     }
 
@@ -408,6 +406,7 @@ public class CommandTeam extends CommandBase {
         SMEventHandler.updateDisplayName(player, false);
         Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(player.getName(), false), teamID);
         recountTeamAdvancements(teamID);
+        player.sendMessage(Messages.getSuccessCommandMessage());
     }
 
     private void recountTeamAdvancements(byte teamId){

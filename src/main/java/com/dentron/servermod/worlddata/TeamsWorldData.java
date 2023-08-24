@@ -69,6 +69,10 @@ public class TeamsWorldData extends WorldSavedData {
         byte teamID = CapUtils.getTeamID(player);
         TeamsWorldData.removePlayer(teamID, player.getUniqueID());
         CapUtils.getStatsCapability(player).setTeamID((byte) 0);
+
+        if (getTeam(teamID).players.isEmpty()){
+            TeamsWorldData.removeTeam(teamID);
+        }
         return teamID;
     }
 
