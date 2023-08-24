@@ -131,6 +131,7 @@ public class Messages {
         List<BlockPos> positions = CapUtils.getTeamPosition(teamID);
         positions.remove(BlockPos.ORIGIN);
 
+        positions = positions.stream().filter((o) -> !o.equals(BlockPos.ORIGIN)).collect(Collectors.toList());
         ITextComponent fifthComponent = new TextComponentTranslation("messages.stat.position");
 
         List<String> teamPositions = positions.stream().map((o) -> String.format(" - [x = %s; z = %s]", o.getX(), o.getZ())).collect(Collectors.toList());

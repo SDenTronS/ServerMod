@@ -7,15 +7,11 @@ import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.ModConstants;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.TeamsWorldData;
-import com.google.common.collect.Lists;
-import net.minecraft.block.Block;
 import net.minecraft.command.*;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.management.PlayerList;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.Style;
 import net.minecraft.util.text.TextComponentString;
@@ -32,7 +28,6 @@ import java.util.stream.Collectors;
 
 public class ServerCommand extends CommandBase {
     private static List<BlockPos> positions;
-    private static double extraRadius = 0;
     private static WorldBorder border;
     private static double spawn_radius;
 
@@ -132,6 +127,7 @@ public class ServerCommand extends CommandBase {
             return;
         }
 
+        TeamsWorldData.setTeamAdvancementAmount(teamID, Utils.recountTeamAdvancements(teamID, TeamsWorldData.getTeam(teamID).getAdv_amount()));
         UUID newLeader = team.get(0);
         player = Utils.getPlayerByUUID(newLeader);
         if (Utils.isPlayerOnline(newLeader)){
@@ -141,68 +137,35 @@ public class ServerCommand extends CommandBase {
 
     }
 
-    public void randomTeleportTeams(MinecraftServer server){
-        for (byte i = 0; i <= 15; i++){
-            List<UUID> players = CapUtils.getTeamPlayers(i);
-            if (players.isEmpty()){
-                continue;
-            }
-
+    public void randomTeleportTeams(MinecraftServer server) throws CommandException {
+            positions = new ArrayList<>();
             WorldServer OVERWORLD = server.getWorld(DimensionType.OVERWORLD.getId());
-            BlockPos target = getLandTarget(OVERWORLD);
             border = OVERWORLD.getWorldBorder();
-            spawn_radius = border.getDiameter() * (ModConstants.PERCENT_OF_BORDER_RADIUS / 100);
+            double WOLRD_RADIUS = (border.getDiameter() * (1 - ModConstants.PERCENT_OF_BORDER_DIAMETR / 100)) / 2;
+            double firstX = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterX();
+            double firstZ = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterZ();
+            positions.add(OVERWORLD.getTopSolidOrLiquidBlock(new BlockPos(firstX, 0, firstZ)));
+            spawn_radius = border.getDiameter() * (ModConstants.PERCENT_OF_BORDER_DIAMETR / 100);
 
-            for (UUID uuid : players){
-                EntityPlayer player = CapUtils.DATA_WORLD.getPlayerEntityByUUID(uuid);
-                if (player == null){
-                    continue;
-                }
-                player = server.getPlayerList().getPlayerByUUID(uuid);
-                player.setPositionAndUpdate(target.getX(), target.getY() + 3, target.getZ());
+            for (byte i = 1; i <= 15; i++){
+                int last_index = positions.size() - 1;
+                BlockPos nextPos = getNextPos(OVERWORLD, positions.get(last_index).getX(), positions.get(last_index).getZ());
+                positions.add(nextPos);
             }
-        }
+
+            System.out.println(positions.stream().map(BlockPos::getX).collect(Collectors.toList()));
+            System.out.println(positions.stream().map(BlockPos::getZ).collect(Collectors.toList()));
     }
 
-    public BlockPos getLandTarget(WorldServer world){
-        WorldBorder border = world.getWorldBorder();
-        double WOLRD_RADIUS = border.getDiameter() / 2 ;
-        boolean flag = true;
-        BlockPos target = BlockPos.ORIGIN;
-
-        while (flag) {
-            double X = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterX();
-            double Z = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterZ();
-            target = BlockPos.ORIGIN.add(X, 255, Z);
-
-            target = world.getTopSolidOrLiquidBlock(target);
-
-            Block block = world.getBlockState(target).getBlock();
-            if (!block.equals(Blocks.WATER) && !block.equals(Blocks.LAVA)){
-                flag = false;
-            }
-        }
-
-        return target;
-    }
 
     private BlockPos getNextPos(WorldServer world, double previousX, double previousZ) throws CommandException {
-        extraRadius = getExtraRadius();
         double angle = getRandomAngleFromAvaliable(previousX, previousZ);
-        double SPAWN_RADIUS = spawn_radius + extraRadius;
+        double SPAWN_RADIUS = spawn_radius;
 
-        double X = Math.cos(angle) * (SPAWN_RADIUS + 1) + previousX;
-        double Z = Math.sin(angle) * (SPAWN_RADIUS + 1) + previousZ;
+        double X = Math.cos(Math.toRadians(angle)) * (SPAWN_RADIUS + 1) + previousX;
+        double Z = Math.sin(Math.toRadians(angle)) * (SPAWN_RADIUS + 1) + previousZ;
 
-        BlockPos target = world.getTopSolidOrLiquidBlock(new BlockPos(X, 0, Z));
-        positions.add(target);
-
-        return target;
-    }
-
-    private double getExtraRadius(){
-        double max = spawn_radius * ModConstants.PERCENT_RADIUS_INACCURASY / 100;
-        return Math.random() * (max + 1);
+        return world.getTopSolidOrLiquidBlock(new BlockPos(X, 0, Z));
     }
 
     private List<String> getAvaliableArcs(double centralX, double centralZ) throws CommandException {
@@ -213,17 +176,22 @@ public class ServerCommand extends CommandBase {
                 avaliableAngles.add(angle);
             }
         }
+        System.out.println(avaliableAngles);
 
         return collectAngles(avaliableAngles);
     }
 
-    private double getRandomAngleFromAvaliable(double centralX, double centralZ) throws CommandException {
+    private int getRandomAngleFromAvaliable(double centralX, double centralZ) throws CommandException {
         List<String> avaliableArcs = getAvaliableArcs(centralX, centralZ);
+
+
 
         String arc = avaliableArcs.get((int) (Math.random() * (avaliableArcs.size())));
         List<Double> angles = stringToArc(arc);
 
-        return Math.random() * (angles.get(1) - angles.get(0) + 1) + angles.get(0);
+        int toReturn = (int) (Math.random() * (angles.get(1) - angles.get(0) + 1) + angles.get(0));
+        System.out.println(avaliableArcs + " " + toReturn);
+        return toReturn;
     }
 
     private List<String> collectAngles(List<Double> avaliableAngles) throws CommandException {
@@ -231,19 +199,21 @@ public class ServerCommand extends CommandBase {
             throw new CommandException("commands.server.random.lack");
         }
 
-        double start = avaliableAngles.get(0);
         List<String> collection = new ArrayList<>();
 
-        for (ListIterator<Double> iter = avaliableAngles.listIterator(); iter.hasNext(); ){
-            double next = iter.next();
-            double previous = iter.previous();
+        ListIterator<Double> iter = avaliableAngles.listIterator();
+        double start = iter.next();
+        double step = ModConstants.ANGLE_STEP;
 
-            if (next - previous >= ModConstants.ANGLE_STEP){
-                collection.add(arcToString(start, previous));
+        while (iter.hasNext()){
+            double next = iter.next();
+            if (start + step != next){
+                collection.add(arcToString(start, avaliableAngles.get(iter.previousIndex() - 1)));
                 start = next;
+                step = 0;
             }
 
-            iter.next();
+            step += ModConstants.ANGLE_STEP;
         }
 
         collection.add(arcToString(start, avaliableAngles.get(avaliableAngles.size() - 1)));
@@ -262,22 +232,22 @@ public class ServerCommand extends CommandBase {
 
     private boolean isAvalible(double angle, double X, double Z){
         boolean flag = true;
-        double SPAWN_RADIUS = spawn_radius + extraRadius;
+        double SPAWN_RADIUS = spawn_radius;
 
-        double checkX = Math.cos(angle) * SPAWN_RADIUS + X;
-        double checkZ = Math.sin(angle) * SPAWN_RADIUS + Z;
+        double checkX = Math.cos(Math.toRadians(angle)) * SPAWN_RADIUS + X;
+        double checkZ = Math.sin(Math.toRadians(angle)) * SPAWN_RADIUS + Z;
         double borderEdgeX1 = border.getCenterX() + border.getDiameter() / 2;
         double borderEdgeX2 = border.getCenterX() - border.getDiameter() / 2;
         double borderEdgeZ1 = border.getCenterZ() + border.getDiameter() / 2;
         double borderEdgeZ2 = border.getCenterZ() - border.getDiameter() / 2;
 
-        boolean borderCheck = (borderEdgeX1 < checkX) && (borderEdgeX2 > checkX) && (borderEdgeZ1 < checkZ) && (borderEdgeZ2 > checkZ);
+        boolean borderCheck = (borderEdgeX1 > checkX) && (borderEdgeX2 < checkX) && (borderEdgeZ1 > checkZ) && (borderEdgeZ2 < checkZ);
 
         for (BlockPos pos : positions){
             double posX = pos.getX();
             double posZ = pos.getZ();
 
-            if ((Math.hypot(checkX - posX, checkZ - posZ) <= spawn_radius) && borderCheck){ //add border check
+            if ((Math.hypot(checkX - posX, checkZ - posZ) < spawn_radius) || !borderCheck){
                 flag = false;
                 break;
             }

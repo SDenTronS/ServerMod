@@ -296,7 +296,6 @@ public class CommandTeam extends CommandBase {
         }
 
         this.putPlayerInTeam(player, color);
-        TeamsWorldData.setTeamAdvancementAmount(color, Utils.getPlayerCompletedAdvancements(player).size());
         Utils.sendMessageToAll(Messages.getCreateMessage(player.getName(), color));
     }
 
@@ -305,7 +304,7 @@ public class CommandTeam extends CommandBase {
         TeamsWorldData.putPlayer(color, player.getUniqueID());
         CapUtils.getStatsCapability(player).setTeamID(color);
         SMEventHandler.updateDisplayName(player, false);
-        TeamsWorldData.setTeamAdvancementAmount(color, Utils.recountTeamAdvancements(color, TeamsWorldData.getTeam(color).getAdv_amount()));
+        recountTeamAdvancements(color);
     }
 
     public void invitePlayer(EntityPlayerMP target, EntityPlayerMP sender) throws CommandException {
@@ -354,6 +353,7 @@ public class CommandTeam extends CommandBase {
         Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(target.getName(), false), teamID);
         target.sendMessage(new TextComponentTranslation("commands.teams.kick.message.toPlayer", sender.getName()).setStyle(new Style().setColor(TextFormatting.RED)));
         SMEventHandler.updateDisplayName(target, false);
+        recountTeamAdvancements(teamID);
     }
 
     public void sendStatsToPlayer(byte color, EntityPlayerMP target) throws CommandException {
@@ -389,6 +389,11 @@ public class CommandTeam extends CommandBase {
         byte teamID = TeamsWorldData.toDefaultTeam(player);
         SMEventHandler.updateDisplayName(player, false);
         Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(player.getName(), false), teamID);
+        recountTeamAdvancements(teamID);
+    }
+
+    private void recountTeamAdvancements(byte teamId){
+        TeamsWorldData.setTeamAdvancementAmount(teamId, Utils.recountTeamAdvancements(teamId, TeamsWorldData.getTeam(teamId).getAdv_amount()));
     }
 
 }

@@ -6,6 +6,7 @@ import com.dentron.servermod.worlddata.ModWorldData;
 import com.google.common.collect.Sets;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.advancements.*;
+import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.server.management.PlayerInteractionManager;
@@ -136,8 +137,9 @@ public class Utils {
             Map<Advancement, AdvancementProgress> map = (Map<Advancement, AdvancementProgress>) progress.get(player.getAdvancements());
 
             for (Map.Entry<Advancement, AdvancementProgress> entry : map.entrySet()){
-                if (entry.getValue().isDone()){
-                    set.add(entry.getKey());
+                Advancement key = entry.getKey();
+                if (entry.getValue().isDone() && !key.getId().toString().contains("minecraft:recipes")){
+                    set.add(key);
                 }
             }
         } catch (Exception e){

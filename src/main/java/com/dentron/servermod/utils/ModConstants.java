@@ -12,7 +12,7 @@ public class ModConstants {
     public static final int INVITATIONS_CHATLINE_ID = 1581;
     public static final int MAX_TEAM_MEMBERS = 999;
     public static final int BASE_TIMER = 5400;
-    public static final double PERCENT_OF_BORDER_RADIUS = 20;
+    public static final double PERCENT_OF_BORDER_DIAMETR = 20;
     public static final double PERCENT_RADIUS_INACCURASY = 22.5;
     public static final double ANGLE_STEP = 5;  // must be divider 360
     public static final byte PLAYER_LIVES = (byte) 15;
