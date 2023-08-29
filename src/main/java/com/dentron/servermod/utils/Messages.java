@@ -1,7 +1,6 @@
 package com.dentron.servermod.utils;
 
 import com.dentron.servermod.worlddata.TeamsWorldData;
-import com.google.common.collect.Lists;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.*;
 import net.minecraft.util.text.event.ClickEvent;
@@ -83,11 +82,11 @@ public class Messages {
             int MAX_Z = (int) (Math.sqrt(Math.pow(radius, 2) - Math.pow(X, 2)));
             int Z = -MAX_Z + (int) (Math.random() * (2 * MAX_Z + 1));
             component = new TextComponentTranslation("messages.events.base_pos", radius - 1, pos.getX() + X, pos.getZ() + Z);
-            TeamsWorldData.setPosition(teamID, new BlockPos(X, 0, Z));
+            TeamsWorldData.addPosition(teamID, new BlockPos(X, 0, Z));
         }
         else {
             component = new TextComponentTranslation("messages.events.null_base");
-            TeamsWorldData.setPosition(teamID, BlockPos.ORIGIN);
+            TeamsWorldData.addPosition(teamID, BlockPos.ORIGIN);
         }
 
         ITextComponent team = getTeamFormatMessage(teamID, true);
@@ -121,14 +120,14 @@ public class Messages {
 
         String playersNames = StringUtils.join(team, ", ");
         String thirdArg = new TextComponentString(playersNames).setStyle(forArgs).getFormattedText();
-        String fourthArg = new TextComponentString(String.valueOf(TeamsWorldData.getTeam(teamID).getAdv_amount())).setStyle(forArgs).getFormattedText();
+        String fourthArg = new TextComponentString(String.valueOf(TeamsWorldData.getTeam(teamID).getAdvAmount())).setStyle(forArgs).getFormattedText();
 
         ITextComponent firstComponent = new TextComponentString("---------  STATISTICS  ---------\n");
         ITextComponent secondComponent = new TextComponentTranslation("messages.stat.team", getTeamFormatMessage(teamID, true).getFormattedText() + "\n");
         ITextComponent thirdComponent = new TextComponentTranslation("messages.stat.players", thirdArg + "\n");
         ITextComponent fourthComponent = new TextComponentTranslation("messages.stat.achievments", fourthArg + "\n");
 
-        List<BlockPos> positions = CapUtils.getTeamPosition(teamID);
+        List<BlockPos> positions = CapUtils.getTeamPositions(teamID);
         positions.remove(BlockPos.ORIGIN);
 
         positions = positions.stream().filter((o) -> !o.equals(BlockPos.ORIGIN)).collect(Collectors.toList());
@@ -150,5 +149,12 @@ public class Messages {
 
     public static ITextComponent getSuccessCommandMessage(){
         return new TextComponentTranslation("commands.feedback.success").setStyle(new Style().setColor(TextFormatting.DARK_GREEN).setBold(true));
+    }
+
+    public static ITextComponent borderExpandMessage(double size){
+        Style forArgs = new Style().setColor(TextFormatting.WHITE).setBold(true);
+        String sizeArg = new TextComponentString(String.valueOf(size)).setStyle(forArgs).getFormattedText();
+
+        return new TextComponentTranslation("messages.border.expand", sizeArg).setStyle(msgStyle);
     }
 }

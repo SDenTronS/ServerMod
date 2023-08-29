@@ -3,20 +3,13 @@ package com.dentron.servermod.utils;
 import com.dentron.servermod.teams.ModPlayerStatsHandler;
 import com.dentron.servermod.teams.PlayerStatsProvider;
 import com.dentron.servermod.tileentities.BaseTile;
-import com.dentron.servermod.timers.TimerUpdate;
 import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.worlddata.TeamsWorldData;
-import com.google.common.collect.Lists;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.DimensionType;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
-import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,11 +17,6 @@ import java.util.UUID;
 public class CapUtils {
 
     public static WorldServer DATA_WORLD;
-
-    public static TeamsWorldData.TeamObject getTeam(EntityPlayer player){
-        byte teamID = getTeamID(player);
-        return TeamsWorldData.getTeam(teamID);
-    }
 
     public static byte getTeamID(EntityPlayer player){
         ModPlayerStatsHandler cap = player.getCapability(PlayerStatsProvider.PLAYER_STATS_CAP, null);
@@ -47,8 +35,8 @@ public class CapUtils {
         return TeamsWorldData.getTeam(teamID).getPlayers();
     }
 
-    public static List<BlockPos> getTeamPosition(byte teamID){
-        return TeamsWorldData.getTeam(teamID).getPosition();
+    public static List<BlockPos> getTeamPositions(byte teamID){
+        return TeamsWorldData.getTeam(teamID).getPositions();
     }
 
 

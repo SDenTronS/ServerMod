@@ -117,6 +117,7 @@ public class BaseBlock extends Block {
             changePoses(pos, false);
             notifyBaseDestroy(Utils.getCurrentBaseColor(pos));
         }
+
         return super.removedByPlayer(state, worldIn, pos, player, willHarvest);
     }
 

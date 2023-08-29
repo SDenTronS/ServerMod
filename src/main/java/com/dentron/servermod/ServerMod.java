@@ -33,7 +33,7 @@ public class ServerMod
 
     public static final String MODID = "servermod";
     public static final String NAME = "Server Mod";
-    public static final String VERSION = "1.12.2-1.2";
+    public static final String VERSION = "1.12.2-2.0";
 
     @Mod.Instance(ServerMod.MODID)
     public static ServerMod instance;

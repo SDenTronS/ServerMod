@@ -16,6 +16,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
+import net.minecraft.nbt.*;
 import net.minecraft.network.play.server.SPacketPlayerListItem;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.BlockPos;
@@ -101,6 +102,7 @@ public class SMEventHandler {
             if (!cap.is_lives_over()){
                 cap.reduceLives();
             }
+        new NBTTagList().appendTag(new NBTTagDouble(0.0D));
         }
     }
 

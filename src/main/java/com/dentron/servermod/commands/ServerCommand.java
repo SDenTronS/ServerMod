@@ -9,9 +9,11 @@ import com.dentron.servermod.utils.ModConstants;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.worlddata.TeamsWorldData;
+import net.minecraft.block.Block;
 import net.minecraft.command.*;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
+import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
@@ -33,7 +35,10 @@ import java.util.stream.Collectors;
 public class ServerCommand extends CommandBase {
     private static List<BlockPos> positions;
     private static WorldBorder border;
+    private static double border_diameter;
     private static double spawn_radius;
+
+    private static double extra_radius;
 
 
     @Override
@@ -61,6 +66,18 @@ public class ServerCommand extends CommandBase {
             randomGen(server);
             sender.sendMessage(Messages.getSuccessCommandMessage());
             return;
+        }
+
+        if (args[0].equals("lockGen")){
+            NBTTagCompound data = ModWorldData.getRandomGenData(CapUtils.DATA_WORLD);
+            if (!data.getBoolean("locked")) {
+                ModWorldData.lockWritingRandomGen(CapUtils.DATA_WORLD);
+                sender.sendMessage(Messages.getSuccessCommandMessage());
+
+            } else {
+                throw new CommandException("commands.server.locked");
+            }
+
         }
 
         if (args[0].equals("randomTeleport")){
@@ -124,14 +141,15 @@ public class ServerCommand extends CommandBase {
             SMEventHandler.updateDisplayName(player, false);
         }
 
-        if (!isTeamLeader){
+        List<UUID> team = CapUtils.getTeamPlayers(teamID);
+
+        if (!isTeamLeader || team.isEmpty()){
             return;
         }
 
         InvitationsBuffer.removeSentInvitations(targetUUID);
-        List<UUID> team = CapUtils.getTeamPlayers(teamID);
 
-        TeamsWorldData.setTeamAdvancementAmount(teamID, Utils.recountTeamAdvancements(teamID, TeamsWorldData.getTeam(teamID).getAdv_amount()));
+        TeamsWorldData.setTeamAdvancementAmount(teamID, Utils.recountTeamAdvancements(teamID, TeamsWorldData.getTeam(teamID).getAdvAmount()));
         UUID newLeader = team.get(0);
         player = Utils.getPlayerByUUID(newLeader);
         if (Utils.isPlayerOnline(newLeader)){
@@ -142,47 +160,76 @@ public class ServerCommand extends CommandBase {
     }
 
     public void randomGen(MinecraftServer server) throws CommandException {
-        NBTTagCompound data = ModWorldData.getRandomGen(CapUtils.DATA_WORLD);
+        NBTTagCompound data = ModWorldData.getRandomGenData(CapUtils.DATA_WORLD);
 
-        if (!data.hasNoTags()){
-            throw new CommandException("commands.server.random.wasGen");
+        if (data.getBoolean("locked")){
+            throw new CommandException("commands.server.random.locked");
         }
 
-        positions = new ArrayList<>();
-        WorldServer OVERWORLD = server.getWorld(DimensionType.OVERWORLD.getId());
-        border = OVERWORLD.getWorldBorder();
-        double WOLRD_RADIUS = (border.getDiameter() * (1 - ModConstants.PERCENT_OF_BORDER_DIAMETR / 100)) / 2;
-        double firstX = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterX();
-        double firstZ = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterZ();
-        positions.add(OVERWORLD.getTopSolidOrLiquidBlock(new BlockPos(firstX, 0, firstZ)));
-        spawn_radius = border.getDiameter() * (ModConstants.PERCENT_OF_BORDER_DIAMETR / 100);
+        int counter = 0;
 
-        for (byte i = 1; i <= 15; i++){
-            int last_index = positions.size() - 1;
-            BlockPos nextPos = getNextPos(OVERWORLD, positions.get(last_index).getX(), positions.get(last_index).getZ());
-            positions.add(nextPos);
+        while (counter <= ModConstants.GEN_ATTEMPTS) {
+            try {
+                positions = new ArrayList<>();
+                WorldServer OVERWORLD = server.getWorld(DimensionType.OVERWORLD.getId());
+                border = OVERWORLD.getWorldBorder();
+                border_diameter = border.getDiameter() - (ModConstants.BASE_MSG_RADIUS - 1) * 2;
+
+                double WOLRD_RADIUS = (border_diameter * (1 - ModConstants.PERCENT_OF_BORDER_DIAMETR / 100)) / 2;
+                double firstX = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterX();
+                double firstZ = -WOLRD_RADIUS + (Math.random() * (2 * WOLRD_RADIUS + 1)) + border.getCenterZ();
+                positions.add(OVERWORLD.getTopSolidOrLiquidBlock(new BlockPos(firstX, 0, firstZ)));
+                spawn_radius = border_diameter * (ModConstants.PERCENT_OF_BORDER_DIAMETR / 100);
+
+                for (byte i = 1; i <= 14; i++) {
+                    int last_index = positions.size() - 1;
+                    BlockPos nextPos = getNextPos(OVERWORLD, positions.get(last_index).getX(), positions.get(last_index).getZ());
+                    positions.add(nextPos);
+                }
+
+                updateWaterPositions(OVERWORLD);
+
+                ModWorldData.writeRandomGen(positions, CapUtils.DATA_WORLD);
+
+                System.out.println("x_{1}=" + positions.stream().map(BlockPos::getX).collect(Collectors.toList()));
+                System.out.println("y_{1}=" + positions.stream().map(BlockPos::getZ).collect(Collectors.toList()));
+                System.out.println(counter);
+
+                return;
+            } catch (NullPointerException e){
+                counter++;
+            }
         }
 
-        ModWorldData.writeRandomGen(positions, CapUtils.DATA_WORLD);
+        throw new CommandException("commands.server.random.lack");
 
-        System.out.println(positions.stream().map(BlockPos::getX).collect(Collectors.toList()));
-        System.out.println(positions.stream().map(BlockPos::getZ).collect(Collectors.toList()));
+    }
+
+    public void updateWaterPositions(WorldServer world) {
+        for (BlockPos target : positions) {
+            Block block = world.getBlockState(target).getBlock();
+            if (block.equals(Blocks.WATER) || block.equals(Blocks.LAVA)) {
+                int i = positions.indexOf(target);
+                positions.set(i, target.up(world.getSeaLevel() - target.getY()));
+            }
+        }
     }
 
     public void randomTeleport() throws CommandException {
-        NBTTagCompound data = ModWorldData.getRandomGen(CapUtils.DATA_WORLD);
+        List<BlockPos> list = ModWorldData.getRandomGenPositions(CapUtils.DATA_WORLD);
 
-        if (data.hasNoTags()){
+        if (list.isEmpty()){
             throw new CommandException("commands.server.random.notGen");
         }
 
         for (byte i = 1; i <= 15; i++){
             List<UUID> team = CapUtils.getTeamPlayers(i);
+            BlockPos position = list.get(i - 1);
+
             for (UUID uuid : team){
                 if (!Utils.isPlayerOnline(uuid)) return;
 
                 EntityPlayerMP player = Utils.getPlayerByUUID(uuid);
-                BlockPos position = BlockPos.fromLong(data.getLong(String.valueOf(i)));
                 player.setSpawnPoint(position, true);
                 player.inventory.clear();
                 player.setPositionAndUpdate(position.getX(), position.getY(), position.getZ());
@@ -195,9 +242,15 @@ public class ServerCommand extends CommandBase {
     }
 
 
+    public double getExtraRadius(){
+        double max = spawn_radius * ModConstants.PERCENT_OF_EXTRA_RADIUS / 100;
+        return Math.random() * (max + 1);
+    }
+
     private BlockPos getNextPos(WorldServer world, double previousX, double previousZ) throws CommandException {
+        extra_radius = getExtraRadius();
         double angle = getRandomAngleFromAvaliable(previousX, previousZ);
-        double SPAWN_RADIUS = spawn_radius;
+        double SPAWN_RADIUS = spawn_radius + extra_radius;
 
         double X = Math.cos(Math.toRadians(angle)) * (SPAWN_RADIUS + 1) + previousX;
         double Z = Math.sin(Math.toRadians(angle)) * (SPAWN_RADIUS + 1) + previousZ;
@@ -213,7 +266,6 @@ public class ServerCommand extends CommandBase {
                 avaliableAngles.add(angle);
             }
         }
-        System.out.println(avaliableAngles);
 
         return collectAngles(avaliableAngles);
     }
@@ -226,14 +278,12 @@ public class ServerCommand extends CommandBase {
         String arc = avaliableArcs.get((int) (Math.random() * (avaliableArcs.size())));
         List<Double> angles = stringToArc(arc);
 
-        int toReturn = (int) (Math.random() * (angles.get(1) - angles.get(0) + 1) + angles.get(0));
-        System.out.println(avaliableArcs + " " + toReturn);
-        return toReturn;
+        return (int) (Math.random() * (angles.get(1) - angles.get(0) + 1) + angles.get(0));
     }
 
-    private List<String> collectAngles(List<Double> avaliableAngles) throws CommandException {
+    private List<String> collectAngles(List<Double> avaliableAngles) throws NullPointerException {
         if (avaliableAngles.isEmpty()){
-            throw new CommandException("commands.server.random.lack");
+            throw new NullPointerException("No avaliable angles");
         }
 
         List<String> collection = new ArrayList<>();
@@ -269,14 +319,14 @@ public class ServerCommand extends CommandBase {
 
     private boolean isAvalible(double angle, double X, double Z){
         boolean flag = true;
-        double SPAWN_RADIUS = spawn_radius;
+        double SPAWN_RADIUS = spawn_radius + extra_radius;
 
         double checkX = Math.cos(Math.toRadians(angle)) * SPAWN_RADIUS + X;
         double checkZ = Math.sin(Math.toRadians(angle)) * SPAWN_RADIUS + Z;
-        double borderEdgeX1 = border.getCenterX() + border.getDiameter() / 2;
-        double borderEdgeX2 = border.getCenterX() - border.getDiameter() / 2;
-        double borderEdgeZ1 = border.getCenterZ() + border.getDiameter() / 2;
-        double borderEdgeZ2 = border.getCenterZ() - border.getDiameter() / 2;
+        double borderEdgeX1 = border.getCenterX() + border_diameter / 2;
+        double borderEdgeX2 = border.getCenterX() - border_diameter / 2;
+        double borderEdgeZ1 = border.getCenterZ() + border_diameter / 2;
+        double borderEdgeZ2 = border.getCenterZ() - border_diameter / 2;
 
         boolean borderCheck = (borderEdgeX1 > checkX) && (borderEdgeX2 < checkX) && (borderEdgeZ1 > checkZ) && (borderEdgeZ2 < checkZ);
 

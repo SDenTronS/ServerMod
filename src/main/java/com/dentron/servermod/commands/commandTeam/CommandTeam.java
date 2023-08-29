@@ -299,13 +299,14 @@ public class CommandTeam extends CommandBase {
     }
 
     public void setSpawnPointOnRandomGen(EntityPlayerMP player) throws CommandException {
-        NBTTagCompound data = ModWorldData.getRandomGen(CapUtils.DATA_WORLD);
-        if (data.hasNoTags()){
+        List<BlockPos> list = ModWorldData.getRandomGenPositions(CapUtils.DATA_WORLD);
+
+        if (list.isEmpty()){
             throw new CommandException("commands.team.spawnpoint.notGen");
         }
 
         byte teamID = CapUtils.getTeamID(player);
-        BlockPos position = BlockPos.fromLong(data.getLong(String.valueOf(teamID)));
+        BlockPos position = list.get(teamID - 1);
         player.setSpawnPoint(position, true);
         player.sendMessage(Messages.getSuccessCommandMessage());
     }
@@ -321,7 +322,7 @@ public class CommandTeam extends CommandBase {
 
     private void putPlayerInTeam(EntityPlayerMP player, byte color){
         TeamsWorldData.getTeamOrCreate(color);
-        TeamsWorldData.putPlayer(color, player.getUniqueID());
+        TeamsWorldData.addPlayer(color, player.getUniqueID());
         CapUtils.getStatsCapability(player).setTeamID(color);
         SMEventHandler.updateDisplayName(player, false);
         recountTeamAdvancements(color);
@@ -354,7 +355,7 @@ public class CommandTeam extends CommandBase {
         byte teamID = CapUtils.getTeamID(oldLeader);
         List<UUID> players = CapUtils.getTeamPlayers(teamID);
         int i = players.indexOf(newLeader.getUniqueID());
-        TeamsWorldData.setNewLeader(i, teamID);
+        TeamsWorldData.swapElementWithFirst(i, teamID);
         Utils.sendMessageToTeam(Messages.getNewLeaderMessage(newLeader.getName()), teamID);
         SMEventHandler.updateDisplayName(newLeader, false);
         SMEventHandler.updateDisplayName(oldLeader, false);
@@ -410,7 +411,7 @@ public class CommandTeam extends CommandBase {
     }
 
     private void recountTeamAdvancements(byte teamId){
-        TeamsWorldData.setTeamAdvancementAmount(teamId, Utils.recountTeamAdvancements(teamId, TeamsWorldData.getTeam(teamId).getAdv_amount()));
+        TeamsWorldData.setTeamAdvancementAmount(teamId, Utils.recountTeamAdvancements(teamId, TeamsWorldData.getTeam(teamId).getAdvAmount()));
     }
 
 }

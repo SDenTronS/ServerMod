@@ -21,6 +21,7 @@ import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
@@ -29,7 +30,7 @@ import java.util.UUID;
 @Mod.EventBusSubscriber(modid = ServerMod.MODID)
 public class TimerUpdate {
     public static World overworld;
-    private static HashMap<Byte, BlockPos> basePoses = new HashMap<>();
+    private static List<BlockPos> basePoses = new ArrayList<>();
     private static int tick = 0;
 
     @SubscribeEvent
@@ -46,7 +47,7 @@ public class TimerUpdate {
         tick = 0;
 
 
-        for (BlockPos pos : basePoses.values()) {
+        for (BlockPos pos : basePoses) {
             BaseTile tile = (BaseTile) overworld.getTileEntity(pos);
             if (tile == null){
                 continue;
@@ -69,19 +70,24 @@ public class TimerUpdate {
     }
 
     public static void updatePoses(){
-        basePoses = new HashMap<>();
+        basePoses = new ArrayList<>();
         for (BlockPos tilePos : ModWorldData.getPositions(CapUtils.DATA_WORLD)){
             BaseTile tile = (BaseTile) overworld.getTileEntity(tilePos);
-            if ((tile != null) && !tile.getTimer().is_times_up()){
-                basePoses.put(tile.getTeamColor(), tilePos);
+            if (tile != null && !tile.getTimer().is_times_up()){
+                basePoses.add(tilePos);
             }
         }
-
-        basePoses.remove((byte) 0);
     }
 
     public static boolean teamHasActiveBase(byte teamID){
-        return basePoses.containsKey(teamID);
+        for (BlockPos tilePos : basePoses){
+            BaseTile tile = (BaseTile) overworld.getTileEntity(tilePos);
+            if (tile != null && tile.getTeamColor() == teamID){
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static void deactivateBase(BlockPos pos){

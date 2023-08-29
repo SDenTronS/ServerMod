@@ -4,7 +4,7 @@ import com.dentron.servermod.ServerMod;
 import com.dentron.servermod.utils.CapUtils;
 import com.dentron.servermod.utils.ModConstants;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.*;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.storage.MapStorage;
@@ -16,7 +16,8 @@ import java.util.*;
 public class TeamsWorldData extends WorldSavedData {
     private static final String DATA_NAME = ServerMod.MODID + "_TeamsData";
     private NBTTagCompound WORLD_TEAMS = new NBTTagCompound();
-    public TeamsWorldData(String name) {
+
+    public TeamsWorldData(String name){
         super(name);
     }
 
@@ -24,10 +25,9 @@ public class TeamsWorldData extends WorldSavedData {
         super(DATA_NAME);
     }
 
-
     @Override
     public void readFromNBT(NBTTagCompound nbt) {
-        WORLD_TEAMS = nbt;
+        this.WORLD_TEAMS = nbt;
     }
 
     @Override
@@ -50,7 +50,7 @@ public class TeamsWorldData extends WorldSavedData {
 
     public static void setTeamAdvancementAmount(byte teamID, int advAmount){
         TeamObject team = getTeam(teamID);
-        team.adv_amount = advAmount;
+        team.advAmount = advAmount;
         updateTeam(team, teamID);
     }
 
@@ -70,7 +70,7 @@ public class TeamsWorldData extends WorldSavedData {
         TeamsWorldData.removePlayer(teamID, player.getUniqueID());
         CapUtils.getStatsCapability(player).setTeamID((byte) 0);
 
-        if (getTeam(teamID).players.isEmpty()){
+        if (getTeam(teamID).getPlayers().isEmpty()){
             TeamsWorldData.removeTeam(teamID);
         }
         return teamID;
@@ -78,36 +78,41 @@ public class TeamsWorldData extends WorldSavedData {
 
     public static TeamObject getTeam(byte teamID){
         NBTTagCompound team = getTeams(CapUtils.DATA_WORLD).getCompoundTag(String.valueOf(teamID));
-        return TeamObject.serialize(team);
+        return !team.hasNoTags() ? TeamObject.serialize(team) : new TeamObject();
     }
 
-    public static void setNewLeader(int UUIDindex, byte teamID){
+    public static void swapElementWithFirst(int index, byte teamID){
         TeamObject team = getTeam(teamID);
-        Collections.swap(team.players, 0, UUIDindex);
+
+        List<UUID> players = team.getPlayers();
+        Collections.swap(players, 0, index);
+        team.setPlayers(players);
+
         updateTeam(team, teamID);
     }
 
-    public static TeamObject getTeamOrCreate(byte TeamID){
-        WorldServer world = CapUtils.DATA_WORLD;
-        NBTTagCompound teams = getTeams(world);
-        String id = String.valueOf(TeamID);
-        if (!teams.hasKey(id)) {
-            createTeam(id, world);
+    public static TeamObject getTeamOrCreate(byte teamID){
+        TeamObject team = getTeam(teamID);
+        if (team.equals(new TeamObject())){
+            createTeam(String.valueOf(teamID), CapUtils.DATA_WORLD);
+            return new TeamObject();
         }
-        return TeamObject.serialize(teams.getCompoundTag(id));
+
+        return team;
     }
 
-    public static boolean putPlayer(byte teamID, UUID player_uuid){
+    public static boolean addPlayer(byte teamID, UUID player_uuid){
         TeamObject team = getTeamOrCreate(teamID);
-        if (team.players.size() < TeamObject.MAX_MEMBERS) {
-            team.players.add(player_uuid);
+
+        if (team.getPlayers().size() < TeamObject.MAX_MEMBERS) {
+            team.addPlayer(player_uuid);
             updateTeam(team, teamID);
             return true;
         }
         return false;
     }
 
-    public static void setPosition(byte teamID, BlockPos pos){
+    public static void addPosition(byte teamID, BlockPos pos){
         TeamObject team = getTeamOrCreate(teamID);
         team.addPosition(pos);
         updateTeam(team, teamID);
@@ -115,7 +120,7 @@ public class TeamsWorldData extends WorldSavedData {
 
     public static void removePlayer(byte teamID, UUID player_uuid){
         TeamObject team = getTeamOrCreate(teamID);
-        team.players.remove(player_uuid);
+        team.removePlayer(player_uuid);
         updateTeam(team, teamID);
     }
 
@@ -138,78 +143,100 @@ public class TeamsWorldData extends WorldSavedData {
 
     public static boolean addAdvancement(byte teamID){
         TeamObject team = getTeam(teamID);
-        team.adv_amount++;
+        team.advAmount++;
         updateTeam(team, teamID);
 
-        int step = team.adv_amount / ModConstants.ADVANCEMENTS_AMOUNT;
+        int step = team.advAmount / ModConstants.ADVANCEMENTS_AMOUNT;
 
-        return team.position.size() < step;
+        return team.getPositions().size() < step;
     }
 
     public static class TeamObject {
         public static int MAX_MEMBERS = ModConstants.MAX_TEAM_MEMBERS;
-        private int adv_amount;
-        private final List<UUID> players;
-        private final List<BlockPos> position;
-
+        private int advAmount;
+        private NBTTagList players;
+        private NBTTagList position;
 
         public TeamObject(){
-            this.players = new ArrayList<>();
-            this.adv_amount = 0;
-            this.position = new ArrayList<>();
+            this.players = new NBTTagList();
+            this.advAmount = 0;
+            this.position = new NBTTagList();
         }
 
-        public TeamObject(List<UUID> players, int adv_amount, List<BlockPos> position){
+        public TeamObject(NBTTagList players, int adv_amount, NBTTagList position){
             this.players = players;
-            this.adv_amount = adv_amount;
+            this.advAmount = adv_amount;
             this.position = position;
         }
 
+        public int getAdvAmount() {
+            return advAmount;
+        }
+
+        public List<BlockPos> getPositions(){
+            List<BlockPos> positions = new ArrayList<>();
+
+            for (int i = 0; i < position.tagCount(); i++){
+                BlockPos pos = BlockPos.fromLong(((NBTTagLong) position.get(i)).getLong());
+                positions.add(pos);
+            }
+
+            return positions;
+        }
+
+        public void addPlayer(UUID player){
+            List<UUID> players = getPlayers();
+            players.add(player);
+            setPlayers(players);
+        }
+
         public void addPosition(BlockPos pos){
-            position.add(pos);
+            List<BlockPos> positions = getPositions();
+            positions.add(pos);
+            setPosition(positions);
         }
 
-        public int getAdv_amount() {
-            return adv_amount;
+        public void removePlayer(UUID player){
+            List<UUID> players = getPlayers();
+            players.remove(player);
+            setPlayers(players);
         }
 
-        public List<BlockPos> getPosition(){
-            return this.position;
+        public void setPosition(List<BlockPos> position){
+            NBTTagList positions = new NBTTagList();
+            position.forEach(pos -> positions.appendTag(new NBTTagLong(pos.toLong())));
+
+            this.position = positions;
         }
 
         public List<UUID> getPlayers(){
-            return this.players;
+            List<UUID> members = new ArrayList<>();
+
+            for (int i = 0; i < players.tagCount(); i++){
+                UUID uuid = UUID.fromString(((NBTTagString) players.get(i)).getString());
+                members.add(uuid);
+            }
+
+            return members;
+        }
+
+        public void setPlayers(List<UUID> players){
+            NBTTagList members = new NBTTagList();
+            players.forEach(uuid -> members.appendTag(new NBTTagString(uuid.toString())));
+
+            this.players = members;
         }
 
 
         public static TeamObject serialize(NBTTagCompound nbt){
-            List<UUID> members = new ArrayList<>();
-            for (int i = 0; nbt.hasKey("member" + i); i++){
-                UUID uuid = UUID.fromString(nbt.getString("member" + i));
-                members.add(uuid);
-            }
-
-            List<BlockPos> positions = new ArrayList<>();
-            for (int i = 0; nbt.hasKey("position" + i); i++){
-                BlockPos pos = BlockPos.fromLong(nbt.getLong("position" + i));
-                positions.add(pos);
-            }
-
-
-            return new TeamObject(members, nbt.getInteger("adv"), positions);
+            return new TeamObject((NBTTagList) nbt.getTag("members"), nbt.getInteger("adv"), (NBTTagList) nbt.getTag("positions"));
         }
 
         public NBTTagCompound deserialize(){
             NBTTagCompound nbt = new NBTTagCompound();
-            nbt.setInteger("adv", adv_amount);
-            for (ListIterator<UUID> iter = players.listIterator(); iter.hasNext(); ) {
-                nbt.setString("member" + iter.nextIndex(), iter.next().toString());
-            }
-
-            for (ListIterator<BlockPos> iter = position.listIterator(); iter.hasNext(); ){
-                nbt.setLong("position" + iter.nextIndex(), iter.next().toLong());
-            }
-
+            nbt.setInteger("adv", advAmount);
+            nbt.setTag("members", players);
+            nbt.setTag("positions", position);
             return nbt;
         }
 

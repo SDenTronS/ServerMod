@@ -11,10 +11,11 @@ import java.util.*;
 public class ModConstants {
     public static final int INVITATIONS_CHATLINE_ID = 1581;
     public static final int MAX_TEAM_MEMBERS = 999;
+    public static final int GEN_ATTEMPTS = 20;
     public static final int BASE_TIMER = 5400;
-    public static final double PERCENT_OF_BORDER_DIAMETR = 20;
-    public static final double PERCENT_RADIUS_INACCURASY = 22.5;
-    public static final double ANGLE_STEP = 5;  // must be divider 360
+    public static final double PERCENT_OF_BORDER_DIAMETR = 22.5;
+    public static final double PERCENT_OF_EXTRA_RADIUS = 260; //260
+    public static final double ANGLE_STEP = 5;
     public static final byte PLAYER_LIVES = (byte) 15;
     public static final byte ADVANCEMENTS_AMOUNT = 30;
     public static final int BASE_MSG_RADIUS = 5000 + (1);
