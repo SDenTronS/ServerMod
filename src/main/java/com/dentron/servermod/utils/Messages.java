@@ -1,6 +1,6 @@
 package com.dentron.servermod.utils;
 
-import com.dentron.servermod.worlddata.TeamsWorldData;
+import com.dentron.servermod.worlddata.ModWorldData;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.*;
 import net.minecraft.util.text.event.ClickEvent;
@@ -82,11 +82,11 @@ public class Messages {
             int MAX_Z = (int) (Math.sqrt(Math.pow(radius, 2) - Math.pow(X, 2)));
             int Z = -MAX_Z + (int) (Math.random() * (2 * MAX_Z + 1));
             component = new TextComponentTranslation("messages.events.base_pos", radius - 1, pos.getX() + X, pos.getZ() + Z);
-            TeamsWorldData.addPosition(teamID, new BlockPos(X, 0, Z));
+            ModWorldData.addPosition(teamID, new BlockPos(X, 0, Z));
         }
         else {
             component = new TextComponentTranslation("messages.events.null_base");
-            TeamsWorldData.addPosition(teamID, BlockPos.ORIGIN);
+            ModWorldData.addPosition(teamID, BlockPos.ORIGIN);
         }
 
         ITextComponent team = getTeamFormatMessage(teamID, true);
@@ -120,7 +120,7 @@ public class Messages {
 
         String playersNames = StringUtils.join(team, ", ");
         String thirdArg = new TextComponentString(playersNames).setStyle(forArgs).getFormattedText();
-        String fourthArg = new TextComponentString(String.valueOf(TeamsWorldData.getTeam(teamID).getAdvAmount())).setStyle(forArgs).getFormattedText();
+        String fourthArg = new TextComponentString(String.valueOf(ModWorldData.getTeam(teamID).getAdvAmount())).setStyle(forArgs).getFormattedText();
 
         ITextComponent firstComponent = new TextComponentString("---------  STATISTICS  ---------\n");
         ITextComponent secondComponent = new TextComponentTranslation("messages.stat.team", getTeamFormatMessage(teamID, true).getFormattedText() + "\n");

@@ -8,7 +8,8 @@ import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.ModConstants;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.ModWorldData;
-import com.dentron.servermod.worlddata.TeamsWorldData;
+import com.dentron.servermod.worlddata.ModWorldData;
+import com.dentron.servermod.worlddata.ModWorldData;
 import net.minecraft.block.Block;
 import net.minecraft.command.*;
 import net.minecraft.entity.player.EntityPlayer;
@@ -94,7 +95,7 @@ public class ServerCommand extends CommandBase {
         if (args[0].equals("wtcp")){
             BlockPos senderPos = sender.getPosition();
             EntityPlayerMP player = (EntityPlayerMP) sender.getEntityWorld().getClosestPlayer(senderPos.getX(), senderPos.getY(), senderPos.getZ(), 10, false);
-            TeamsWorldData.toDefaultTeam(player);
+            ModWorldData.toDefaultTeam(player);
             SMEventHandler.updateDisplayName(player, false);
         }
     }
@@ -134,7 +135,7 @@ public class ServerCommand extends CommandBase {
         EntityPlayerMP player = Utils.getPlayerByUUID(targetUUID);
         boolean isTeamLeader = Utils.isTeamLeader(player);
 
-        byte teamID = TeamsWorldData.toDefaultTeam(player);
+        byte teamID = ModWorldData.toDefaultTeam(player);
 
         if (Utils.isPlayerOnline(targetUUID)){
             player.sendMessage(new TextComponentTranslation("commands.teams.kick.message.toPlayer", sender.getName()).setStyle(new Style().setColor(TextFormatting.RED)));
@@ -149,7 +150,7 @@ public class ServerCommand extends CommandBase {
 
         InvitationsBuffer.removeSentInvitations(targetUUID);
 
-        TeamsWorldData.setTeamAdvancementAmount(teamID, Utils.recountTeamAdvancements(teamID, TeamsWorldData.getTeam(teamID).getAdvAmount()));
+        ModWorldData.setTeamAdvancementAmount(teamID, Utils.recountTeamAdvancements(teamID, ModWorldData.getTeam(teamID).getAdvAmount()));
         UUID newLeader = team.get(0);
         player = Utils.getPlayerByUUID(newLeader);
         if (Utils.isPlayerOnline(newLeader)){

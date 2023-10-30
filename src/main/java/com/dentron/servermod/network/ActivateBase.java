@@ -1,6 +1,5 @@
 package com.dentron.servermod.network;
 
-import com.dentron.servermod.SMEventHandler;
 import com.dentron.servermod.ServerMod;
 import com.dentron.servermod.teams.ModPlayerStatsHandler;
 import com.dentron.servermod.tileentities.BaseTile;
@@ -10,8 +9,8 @@ import com.dentron.servermod.utils.LevelUtils;
 import com.dentron.servermod.utils.ModConstants;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.ModWorldData;
+import com.dentron.servermod.worlddata.ModWorldData;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.tileentity.TileEntity;
@@ -24,7 +23,6 @@ import net.minecraftforge.fml.common.network.simpleimpl.IMessage;
 import net.minecraftforge.fml.common.network.simpleimpl.IMessageHandler;
 import net.minecraftforge.fml.common.network.simpleimpl.MessageContext;
 
-import javax.annotation.Nullable;
 import java.util.List;
 import java.util.UUID;
 

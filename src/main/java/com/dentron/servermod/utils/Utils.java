@@ -6,9 +6,10 @@ import com.dentron.servermod.worlddata.ModWorldData;
 import com.google.common.collect.Sets;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.advancements.*;
-import net.minecraft.client.Minecraft;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagInt;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.server.management.PlayerInteractionManager;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
@@ -34,17 +35,12 @@ public class Utils {
     }
 
     public static BlockPos getTeamBasePos(byte teamId){
-        String id = String.valueOf(teamId);
         List<BlockPos> basePoses = ModWorldData.getPositions(CapUtils.DATA_WORLD);
-        NBTTagCompound baseData = ModWorldData.getBaseData(CapUtils.DATA_WORLD);
         int max_activations = 1;
         BlockPos toReturn = null;
 
         for (BlockPos basePos : basePoses){
-            String pos = String.valueOf(basePos.toLong());
-            NBTTagCompound data = baseData.getCompoundTag(pos);
-
-            int activations = data.getInteger(id);
+            int activations = getBaseActivationByTeam(basePos, teamId);
 
             if (activations >= max_activations){
                 toReturn = basePos;
@@ -161,4 +157,10 @@ public class Utils {
         return Math.max(advancementsSet.size(), oldValue);
     }
 
+    public static int getBaseActivationByTeam(BlockPos pos, byte teamID){
+        NBTTagCompound data = ModWorldData.getBaseData(CapUtils.DATA_WORLD);
+        NBTTagList list = (NBTTagList) data.getTag(String.valueOf(pos.toLong()));
+
+        return ((NBTTagInt) list.get(teamID - 1)).getInt();
+    }
 }

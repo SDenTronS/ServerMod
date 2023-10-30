@@ -4,11 +4,11 @@ package com.dentron.servermod.timers;
 import com.dentron.servermod.network.UpdateNoneBaseGUI;
 import com.dentron.servermod.utils.ModConstants;
 import com.dentron.servermod.utils.Utils;
-import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.ServerMod;
 import com.dentron.servermod.network.UpdateBaseOnClient;
 import com.dentron.servermod.tileentities.BaseTile;
 import com.dentron.servermod.utils.CapUtils;
+import com.dentron.servermod.worlddata.ModWorldData;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
@@ -19,10 +19,8 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.relauncher.Side;
-import net.minecraftforge.fml.relauncher.SideOnly;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 

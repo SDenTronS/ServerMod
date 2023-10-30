@@ -4,7 +4,6 @@ import com.dentron.servermod.teams.ModPlayerStatsHandler;
 import com.dentron.servermod.teams.PlayerStatsProvider;
 import com.dentron.servermod.tileentities.BaseTile;
 import com.dentron.servermod.worlddata.ModWorldData;
-import com.dentron.servermod.worlddata.TeamsWorldData;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.math.BlockPos;
@@ -32,11 +31,11 @@ public class CapUtils {
     }
 
     public static List<UUID> getTeamPlayers(byte teamID){
-        return TeamsWorldData.getTeam(teamID).getPlayers();
+        return ModWorldData.getTeam(teamID).getPlayers();
     }
 
     public static List<BlockPos> getTeamPositions(byte teamID){
-        return TeamsWorldData.getTeam(teamID).getPositions();
+        return ModWorldData.getTeam(teamID).getPositions();
     }
 
 

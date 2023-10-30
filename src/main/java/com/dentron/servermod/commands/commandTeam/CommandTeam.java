@@ -7,7 +7,6 @@ import com.dentron.servermod.utils.CapUtils;
 import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.ModWorldData;
-import com.dentron.servermod.worlddata.TeamsWorldData;
 import com.dentron.servermod.utils.ModConstants;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
@@ -49,7 +48,7 @@ public class CommandTeam extends CommandBase {
         byte senderTeamId = CapUtils.getTeamID(commandSender);
         boolean isSenderTeamLeader = Utils.isTeamLeader(commandSender);
         boolean commandSenderInTeam = senderTeamId != 0;
-        boolean teamIsExist = TeamsWorldData.getTeams(CapUtils.DATA_WORLD).hasKey(String.valueOf(senderTeamId));
+        boolean teamIsExist = ModWorldData.getTeams(CapUtils.DATA_WORLD).hasKey(String.valueOf(senderTeamId));
         boolean teamHasActiveBase = CapUtils.hasActiveBase(senderTeamId);
 
         if (args.length == 1){
@@ -251,11 +250,6 @@ public class CommandTeam extends CommandBase {
         return Collections.emptyList();
     }
 
-    @Override
-    public int getRequiredPermissionLevel() {
-        return DefaultPermissionLevel.OP.ordinal();
-    }
-
     public List<String> getAvaliableColors(){
         Set<String> existingTeams = getUnavaliableColor();
         Set<String> allColors = Sets.newHashSet(ModConstants.COLORS.keySet());
@@ -267,7 +261,7 @@ public class CommandTeam extends CommandBase {
     }
 
     public Set<String> getUnavaliableColor(){
-        NBTTagCompound teams = TeamsWorldData.getTeams(CapUtils.DATA_WORLD);
+        NBTTagCompound teams = ModWorldData.getTeams(CapUtils.DATA_WORLD);
         Set<String> existingTeams = new HashSet<>();
 
         for (byte i = 1; i < 16; i++){
@@ -277,6 +271,17 @@ public class CommandTeam extends CommandBase {
         }
 
         return existingTeams;
+    }
+
+    @Override
+    public int getRequiredPermissionLevel()
+    {
+        return DefaultPermissionLevel.ALL.ordinal();
+    }
+
+    @Override
+    public boolean checkPermission(MinecraftServer server, ICommandSender sender) {
+        return true;
     }
 
     // Command Execution
@@ -321,8 +326,8 @@ public class CommandTeam extends CommandBase {
     }
 
     private void putPlayerInTeam(EntityPlayerMP player, byte color){
-        TeamsWorldData.getTeamOrCreate(color);
-        TeamsWorldData.addPlayer(color, player.getUniqueID());
+        ModWorldData.getTeamOrCreate(color);
+        ModWorldData.addPlayer(color, player.getUniqueID());
         CapUtils.getStatsCapability(player).setTeamID(color);
         SMEventHandler.updateDisplayName(player, false);
         recountTeamAdvancements(color);
@@ -355,7 +360,7 @@ public class CommandTeam extends CommandBase {
         byte teamID = CapUtils.getTeamID(oldLeader);
         List<UUID> players = CapUtils.getTeamPlayers(teamID);
         int i = players.indexOf(newLeader.getUniqueID());
-        TeamsWorldData.swapElementWithFirst(i, teamID);
+        ModWorldData.swapElementWithFirst(i, teamID);
         Utils.sendMessageToTeam(Messages.getNewLeaderMessage(newLeader.getName()), teamID);
         SMEventHandler.updateDisplayName(newLeader, false);
         SMEventHandler.updateDisplayName(oldLeader, false);
@@ -369,7 +374,7 @@ public class CommandTeam extends CommandBase {
         } else if (!Utils.playerInSameTeam(target, teamID)) {
             throw new CommandException("commands.teams.notSameTeam");
         }
-        TeamsWorldData.toDefaultTeam(target);
+        ModWorldData.toDefaultTeam(target);
 
         Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(target.getName(), false), teamID);
         target.sendMessage(new TextComponentTranslation("commands.teams.kick.message.toPlayer", sender.getName()).setStyle(new Style().setColor(TextFormatting.RED)));
@@ -403,7 +408,7 @@ public class CommandTeam extends CommandBase {
     }
 
     public void leaveTeam(EntityPlayerMP player){
-        byte teamID = TeamsWorldData.toDefaultTeam(player);
+        byte teamID = ModWorldData.toDefaultTeam(player);
         SMEventHandler.updateDisplayName(player, false);
         Utils.sendMessageToTeam(Messages.getEntryOrLeaveMessage(player.getName(), false), teamID);
         recountTeamAdvancements(teamID);
@@ -411,7 +416,7 @@ public class CommandTeam extends CommandBase {
     }
 
     private void recountTeamAdvancements(byte teamId){
-        TeamsWorldData.setTeamAdvancementAmount(teamId, Utils.recountTeamAdvancements(teamId, TeamsWorldData.getTeam(teamId).getAdvAmount()));
+        ModWorldData.setTeamAdvancementAmount(teamId, Utils.recountTeamAdvancements(teamId, ModWorldData.getTeam(teamId).getAdvAmount()));
     }
 
 }

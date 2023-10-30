@@ -9,6 +9,7 @@ import com.dentron.servermod.tileentities.BaseTile;
 import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.Utils;
 import com.dentron.servermod.worlddata.ModWorldData;
+import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.timers.TimerUpdate;
 import com.dentron.servermod.utils.CapUtils;
 import net.minecraft.block.Block;
@@ -122,12 +123,11 @@ public class BaseBlock extends Block {
     }
 
     private void changePoses(BlockPos pos, boolean flag){
-        ModWorldData data = ModWorldData.forWorld(CapUtils.DATA_WORLD);
         if (flag) {
-            data.putPos(pos);
+            ModWorldData.putPos(pos);
         }
         else {
-            data.removePos(pos);
+            ModWorldData.removePos(pos);
         }
         TimerUpdate.updatePoses();
     }

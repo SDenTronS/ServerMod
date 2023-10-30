@@ -6,7 +6,7 @@ import com.dentron.servermod.network.UpdateNoneBaseGUI;
 import com.dentron.servermod.teams.ModPlayerStatsHandler;
 import com.dentron.servermod.utils.Messages;
 import com.dentron.servermod.utils.Utils;
-import com.dentron.servermod.worlddata.TeamsWorldData;
+import com.dentron.servermod.worlddata.ModWorldData;
 import com.dentron.servermod.timers.TimerUpdate;
 import com.dentron.servermod.utils.CapUtils;
 import com.dentron.servermod.utils.ModConstants;
@@ -23,7 +23,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.*;
 import net.minecraft.world.DimensionType;
 import net.minecraft.world.GameType;
-import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.AdvancementEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -73,7 +72,7 @@ public class SMEventHandler {
         }
 
         if (flag){
-            boolean needMsg = TeamsWorldData.addAdvancement(teamID);
+            boolean needMsg = ModWorldData.addAdvancement(teamID);
 
             if (needMsg){
                 sendCoordinatesToAll(teamID);
@@ -288,7 +287,7 @@ public class SMEventHandler {
     }
 
 //    @SubscribeEvent
-//    public void test(RenderGameOverlayEvent event){
+//    public void test(CommandRe event){
 //        event.getType().equals(RenderGameOverlayEvent.ElementType.CHAT);
 //        event.getResolution().
 //
